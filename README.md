@@ -1,6 +1,6 @@
 # project's README
 
-[lammps](https://lammps.sandia.gov/)
+[LAMMPS](https://lammps.sandia.gov/)
 
 [LAMMPS github](https://github.com/lammps/lammps)
 
