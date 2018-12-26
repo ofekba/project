@@ -11,9 +11,9 @@ The script code and input files to test the code in lammps
 2. copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
 3. open terminal in the lammps/src directory
 5. use those commands:
-  >>make yes-USER-REAXC
-  >>make serial
-  compile the lammps code for serial use.
+  >> make yes-USER-REAXC
+  
+  >> make serial //compile the lammps code for serial use.
 6. download nvt_run folder and open terminal in it
 7. run the command:
   >>path/to/lammps/src/lmp_serial < in.nvt
