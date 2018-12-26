@@ -11,5 +11,5 @@
 
 
 ## Disclaimer
-TThis project is developed as part of the requirements for a final project at the software engineering department - [Azrieli College of Engineering](http://www.jce.ac.il/), Jerusalem, Israel.
+This project is developed as part of the requirements for a final project at the software engineering department - [Azrieli College of Engineering](http://www.jce.ac.il/), Jerusalem, Israel.
 
