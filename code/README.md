@@ -1,4 +1,4 @@
-The code of lammps I changed
+### The code of lammps I changed
 
 ##### fix_reaxc_ofek:
 The code that implement the algorithem in the article
