@@ -175,24 +175,37 @@ void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/, FILE * /*fp*/)
   memory->create(buf,nbuf,"reax/c/ofek:buf");
   for (i = 0; i < nbuf; i ++) buf[i] = 0.0;
 
+
   // Pass information to buffer
   PassBuffer(buf, nbuf_local);
-
   // Receive information from buffer for output
   RecvBuffer(buf, nbuf, nbuf_local, nlocal_tot, numbonds_max);
-
   memory->destroy(buf);
 
 }
 
 /* ---------------------------------------------------------------------- */
 
+
+/*
+   - list->inum  = the length of the neighborlists list.
+   - list->ilist  = list list of "i" atoms for which neighbor lists exist.
+   - list->numneigh = the length of each these neigbor list.
+>  - list->firstneigh = the pointer to the list of neighbors of "i".
+*/
+
+
+
 void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 {
      
-     int nlocal_tot = static_cast<int> (atom->natoms);
-
-     printf("\n==================nlocal_tot=%d\n", nlocal_tot);
+  int nlocal_tot = static_cast<int> (atom->natoms);
+  if (atom->nmax > nmax) {
+    nmax = atom->nmax;
+    printf("\n==================nmax is=%d\n", nmax);//************
+  }
+  printf("\n==================nlocal_tot=%d \n", nlocal_tot);
+  
   int i, j, pj, nj;
   far_neighbor_data *nbr_pj;
   int start_i, end_i;
@@ -205,34 +218,38 @@ void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
   for(i=0; i<local_tot+1; i++)
     numNeighPerAtom[i]=0;*/
 
-printf("\n==================\n");
-for(i = 0; i < 100; i++){
+//printf("\n==================\n");
+for(i = 0; i <200 ; i++){
     atom_i = &(reaxc->system->my_atoms[i]);
     int tag_i=(int)atom_i->orig_id;
     type_i  = atom_i->type;
-    printf("\ni=%d, orig_id=%d, imprt_id=%d, type=%d",i,tag_i, atom_i->imprt_id, type_i);
+    //printf("\ni=%d, orig_id=%d, imprt_id=%d, type=%d",i,tag_i, atom_i->imprt_id, type_i);
 }
-printf("\n==================\n");
+//printf("\n==================\n");
+printf("MAXREAXBOND=%d",MAXREAXBOND);
 
-  for (i = 0; i < nlocal_tot; i++) {
+  for (i = 0; i < 200; i++) {
     printf("\n=============i=%d=========\n",i);
     atom_i = &(reaxc->system->my_atoms[i]);
-    int tag_i=(int)atom_i->orig_id;
     type_i  = atom_i->type;
+    int tag_i=(int)atom_i->orig_id;
+    if(tag_i <= 0||tag_i > nlocal_tot)
+      continue;
+    if(tag_i==11)
+      printf("to check\n");
     start_i = Start_Index(i, far_nbrs);
     end_i  = End_Index(i, far_nbrs);
-    nj=0;
+    nj=numneigh[tag_i-1];
     for( pj = start_i; pj < end_i; ++pj ) {
       nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
-      if (nbr_pj->d <= cutoff) {
+      if (nbr_pj->d <= cutoff && nj < MAXREAXBOND) {
         j = nbr_pj->nbr;
         atom_j = &(reaxc->system->my_atoms[j]);
         type_j = atom_j->type;
         neighid[tag_i-1][nj] = atom_j->orig_id;
          //printf("\nd is=%f in [%d] [%d]", nbr_pj->d, tag_i ,nj);//***************
          neigh_d[tag_i-1][nj]=nbr_pj->d;
-
-        nj++;
+         nj++;
       }
     }
     numneigh[tag_i-1]=nj;
@@ -240,12 +257,13 @@ printf("\n==================\n");
   }
       printf("\n=============finish=========\n");
     for(i=0; i<nlocal_tot; i++){
-        printf("neigh of %d:", i+1);
+        printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
         for(j=0; j<numneigh[i]; j++){
-            printf("|id=%d, distance=%f",int(neighid[i][j]), neigh_d[i][j]);
+          printf("|id=%d, distance=%f",int(neighid[i][j]), neigh_d[i][j]);
         }
         printf("|\n\n");
     }
+      printf("\n=============finish=========\n");
 }
 
 
@@ -255,32 +273,32 @@ void FixReaxCOfek::PassBuffer(double *buf, int &nbuf_local)
 {
   int i, j, k, numNbrs;
   int nlocal = atom->nlocal;
-
+  printf("nlocal=%d\n", nlocal);
   j = 2;
   buf[0] = nlocal;
   for (i = 0; i < nlocal; i++) {
     buf[j-1] = atom->tag[i];
     buf[j+0] = atom->type[i];
-    buf[j+2] = reaxc->workspace->nlp[i];
-    buf[j+3] = atom->q[i];
-    buf[j+4] = numneigh[i];
-    numNbrs = nint(buf[j+4]);
-
-    for (k = 5; k < 5+numNbrs; k++) {
-      buf[j+k] = neighid[i][k-5];
+    buf[j+1] = numneigh[i];
+    numNbrs = nint(buf[j+1]);
+    j++;
+    for (k = j; k < j+numNbrs; k++) {
+      buf[j+k] = neighid[i][k-j];
     }
-    j += (5+numNbrs);
-
-    if (atom->molecule == NULL ) buf[j] = 0.0;
-    else buf[j] = atom->molecule[i];
-    j ++;
+    j += numNbrs;
     
-    for (k = 0; k < numNbrs; k++) {
+   /* for (k = 0; k < numNbrs; k++) {
       buf[j+k] = neigh_d[i][k];
     }
-    j += (1+numNbrs);
+    j += numNbrs;*/
+    j++;
   }
+  
+  /*for(i=0; i<j; i++){
+    printf("%f", buf[i]);
+  }*/
   nbuf_local = j - 1;
+  printf("\n========PassBuffer finish======\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -296,9 +314,11 @@ void FixReaxCOfek::RecvBuffer(double *buf, int nbuf, int nbuf_local,
   double sbotmp, nlptmp, avqtmp, dtmp;
 
   MPI_Request irequest, irequest2;
-
+      printf("********1\n");
   if (me == 0 ){
+        printf("********2\n");
     fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",ntimestep);
+            printf("********3\n");
     fprintf(fp,"# \n");
     fprintf(fp,"# Number of particles %d \n",natoms);
     fprintf(fp,"# \n");
@@ -306,7 +326,7 @@ void FixReaxCOfek::RecvBuffer(double *buf, int nbuf, int nbuf_local,
     fprintf(fp,"# Particle connection table \n");
     fprintf(fp,"# id type nb id_1...id_nb mol nlp q \n");
   }
-
+      printf("********2\n");
   j = 2;
   if (me == 0) {
     for (inode = 0; inode < nprocs; inode ++) {
@@ -318,6 +338,7 @@ void FixReaxCOfek::RecvBuffer(double *buf, int nbuf, int nbuf_local,
         nlocal_tmp = nint(buf[0]);
       }
       j = 2;
+            printf("********3\n");
       for (i = 0; i < nlocal_tmp; i ++) {
         itag = static_cast<tagint> (buf[j-1]);
         itype = nint(buf[j+0]);
@@ -325,7 +346,7 @@ void FixReaxCOfek::RecvBuffer(double *buf, int nbuf, int nbuf_local,
         nlptmp = buf[j+2];
         avqtmp = buf[j+3];
         numNbrs = nint(buf[j+4]);
-
+      printf("********4\n");
         fprintf(fp," " TAGINT_FORMAT " %d %d",itag,itype,numNbrs);
 
         for (k = 5; k < 5+numNbrs; k++) {
