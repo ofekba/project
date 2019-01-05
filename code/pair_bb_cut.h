@@ -11,61 +11,55 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#ifdef PAIR_CLASS
+#ifdef FIX_CLASS
 
-PairStyle(lj/cut,pairBBcut)
+FixStyle(reax/c/ofek,FixReaxCOfek)
 
 #else
 
-#ifndef LMP_PAIR_LJ_CUT_H
-#define LMP_PAIR_LJ_CUT_H
+#ifndef LMP_FIX_REAXC_OFEK_H
+#define LMP_FIX_REAXC_OFEK_H
 
-#include "pair.h"
+#include <cstdio>
+#include "fix.h"
+#include "pointers.h"
 
 namespace LAMMPS_NS {
 
-class pairBBcut : public Pair {
+class FixReaxCOfek : public Fix {
  public:
-  pairBBcut(class LAMMPS *);
-  virtual ~pairBBcut();
-  virtual void compute(double**, int);
-  void settings(int, char **);
-  void coeff(int, char **);
-  void init_style();
-  double single(int, int, int, int, double);
-  void *extract(const char *, int &);
-
+  FixReaxCOfek(class LAMMPS *, int, char **);
+  virtual ~FixReaxCOfek();
+  int setmask();
+  virtual void init();
+  void setup(int);
+  void end_of_step();
 
  protected:
-  double cut_global;
-  double **cut;
-  double **F1,**F2, **wanted_dist;
-  double **offset;
-  double *cut_respa;
+  int me, nprocs, nmax, ntypes, maxsize;
+  int *numneigh;
+  tagint **neighid;
+  double **neigh_d; //distance between neighbors
+  FILE *fp;
 
-  virtual void allocate();
+  void allocate();
+  void destroy();
+  virtual void Output_ReaxC_Bonds(bigint, FILE *);
+  void FindNbr(struct _reax_list*, int &);
+  void PassBuffer(double *, int &);
+  void RecvBuffer(double *, int, int, int, int);
+  int nint(const double &);
+  virtual double memory_usage();
+  void OfekFunc(); //*****my func*****
+  int from_tag_to_i(tagint tag);//*****my func*****
+
+  bigint nvalid, nextvalid();
+  int local_tot; //num of atoms
+  struct _reax_list *lists;
+  class PairReaxC *reaxc;
+  class NeighList *list;
 };
-
 }
 
 #endif
 #endif
-
-/* ERROR/WARNING messages:
-
-E: Illegal ... command
-
-Self-explanatory.  Check the input script syntax and compare to the
-documentation for the command.  You can use -echo screen as a
-command-line option when running LAMMPS to see the offending line.
-
-E: Incorrect args for pair coefficients
-
-Self-explanatory.  Check the input script or data file.
-
-E: Pair cutoff < Respa interior cutoff
-
-One or more pairwise cutoffs are too short to use with the specified
-rRESPA cutoffs.
-
-*/
