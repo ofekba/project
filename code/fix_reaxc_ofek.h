@@ -37,24 +37,23 @@ class FixReaxCOfek : public Fix {
 
  protected:
   int me, nprocs, nmax, ntypes, maxsize;
-  int *numneigh;
-  tagint **neighid;
+  int *numneigh; // list of numneigh for each atom
+  tagint **neighid; //list of neigh per atom by ID
   double **neigh_d; //distance between neighbors
-  FILE *fp;
+  double **fourset; //list of fourset to appky tha potential on
+  int num_fourset; //0 if the list is empty. else, number of fourset
+  int local_tot; //num of atoms
 
   void allocate();
   void destroy();
-  virtual void Output_ReaxC_Bonds(bigint, FILE *);
+  virtual void Output_ReaxC_Bonds(bigint);
   void FindNbr(struct _reax_list*, int &);
-  void PassBuffer(double *, int &);
-  void RecvBuffer(double *, int, int, int, int);
   int nint(const double &);
   virtual double memory_usage();
   void OfekFunc(); //*****my func*****
   int from_tag_to_i(tagint tag);//*****my func*****
 
   bigint nvalid, nextvalid();
-  int local_tot; //num of atoms
   struct _reax_list *lists;
   class PairReaxC *reaxc;
   class NeighList *list;

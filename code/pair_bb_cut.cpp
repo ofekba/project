@@ -102,7 +102,7 @@ void pair_bb_cut::compute(double **Foursets, int num_foursets)
 
     double r= rij-r12;
     double temp= -r*F2[itype][jtype];
-    fpair = 2 * F1[itype][jtype] * temp * exp(temp * r)
+    fpair = -2 * F1[itype][jtype] * temp * exp(temp * r)
 
     f[i][0] += delx*fpair;
     f[i][1] += dely*fpair;
