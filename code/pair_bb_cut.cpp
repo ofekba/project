@@ -38,15 +38,16 @@ using namespace MathConst;
 
 /* ---------------------------------------------------------------------- */
 
-pair_bb_cut::pair_bb_cut(LAMMPS *lmp) : Pair(lmp)
+pairBBcut::pairBBcut(LAMMPS *lmp) : Pair(lmp)
 {
-  respa_enable = 1;
-  writedata = 1;
+  allocate();
+  int nmax = atom->nmax;
+  f_fourset=NULL;
 }
 
 /* ---------------------------------------------------------------------- */
 
-pair_bb_cut::~pair_bb_cut()
+pairBBcut::~pairBBcut()
 {
   if (allocated) {
     memory->destroy(setflag);
@@ -56,102 +57,101 @@ pair_bb_cut::~pair_bb_cut()
     memory->destroy(F1);
     memory->destroy(F2);
     memory->destroy(offset);
+    memory->destroy(f_fourset);
   }
 }
 
 /* ---------------------------------------------------------------------- */
 
-void pair_bb_cut::compute(double **Foursets, int num_foursets)
+int pairBBcut::from_tag_to_i(tagint tag){
+  if(tag<=0)
+    return -1;
+  //printf("----> in from_tag_to_i function <----\n") ; 
+  //int len=sizeof(atom->tag)/sizeof(*atom->tag);
+  for(int i=0; i<nmax; i++){
+    if(int(atom->tag[i])==int(tag)){
+        //printf("the tag is: %d the i is: %d\n", tag, i);
+        //printf("----> out <----\n") ;
+        return i;
+    } 
+  }
+  
+//printf("no i for that shitti tag");
+  //printf("----> out no result with tag=%d<----\n", tag) ;
+  return -1;
+
+}
+
+
+
+
+
+/* ---------------------------------------------------------------------- */
+
+void pairBBcut::compute(int eflag, int vflag)
 {
-  int i,j,ii,jj,inum,jnum,itype,jtype;
-  double xtmp,ytmp,ztmp,delx,dely,delz,evdwl,fpair;
-  double rsq, temp, r12, rij;
-  int *ilist,*jlist,*numneigh,**firstneigh;
+ /* for (int i = 0; i < nmax; i++) {
+    for (int j = 0; j < 3; j++) {
+      f_fourset[i][j] = 0;
+    }
+  }
 
+  for(int k=0; k<num_fourset; k++){
+    compute_pair(fourset[k][0], fourset[k][1]);
+    compute_pair(fourset[k][0], fourset[k][3]);
+    compute_pair(fourset[k][0], fourset[2][3]);
+  }
+  //reaxc.set_f_fourset(f_fourset);*/
+ 
+}
+/* ---------------------------------------------------------------------- */
+//this method get:
+//1. tag, type of atop i and tag, type of atom j
+//2. the R(i,j)=the distance between them
+//returns the calculated force.
+double pairBBcut::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq)
+{
+  double force;
+  double r= sqrt(rsq)-wanted_dist[itype][jtype];
+  double temp= -F2[itype][jtype] * r;
+  force = -2 * F1[itype][jtype] * temp * exp(temp * r);
+  return force;
+}
 
-  double **x = atom->x;
-  double **f = atom->f;
-  int *type = atom->type;
-  int nlocal = atom->nlocal;
-  double *special_lj = force->special_lj;
-  int newton_pair = force->newton_pair;
+/* ---------------------------------------------------------------------- */
+void pairBBcut::compute_pair(int i_tag, int j_tag){
+    
+    int i,j,itype, jtype;
+    double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq;
+    double **x = atom->x;
+    double **f = atom->f;
+    int *type = atom->type;
 
-  inum = list->inum;
-  ilist = list->ilist;
-  numneigh = list->numneigh;
-  firstneigh = list->firstneigh;
+    i=from_tag_to_i(i_tag);
 
-  for(int k=0; ik<num_foursets; k++){
-    for(int q=0; q<2; q++)
-    i = Foursets[k][q];
     xtmp = x[i][0];
     ytmp = x[i][1];
     ztmp = x[i][2];
     itype = type[i];
 
-    j=i = Foursets[k][q+1];
+    j=from_tag_to_i(j_tag);
     jtype = type[j];
 
     delx = xtmp - x[j][0];
     dely = ytmp - x[j][1];
     delz = ztmp - x[j][2];
-    
+      
     rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-    rij=sqrt(rsq);
-    r12=wanted_dist[itype][jtype];
+    fpair=single(i_tag, j_tag, itype, jtype, rsq);
 
-    double r= rij-r12;
-    double temp= -r*F2[itype][jtype];
-    fpair = -2 * F1[itype][jtype] * temp * exp(temp * r)
+    f_fourset[i_tag-1][0] += delx*fpair;
+    f_fourset[i_tag-1][1] += dely*fpair;
+    f_fourset[i_tag-1][2] += delz*fpair;
+            
+    f_fourset[j_tag-1][0] -= delx*fpair;
+    f_fourset[j_tag-1][1] -= dely*fpair;
+    f_fourset[j_tag-1][2] -= delz*fpair;
 
-    f[i][0] += delx*fpair;
-    f[i][1] += dely*fpair;
-    f[i][2] += delz*fpair;
-          
-    f[j][0] -= delx*fpair;
-    f[j][1] -= dely*fpair;
-    f[j][2] -= delz*fpair;
-
-  }
-  
-  
-  // loop over neighbors of my atoms
-  /*for (ii = 0; ii < inum; ii++) {
-    i = ilist[ii];
-    xtmp = x[i][0];
-    ytmp = x[i][1];
-    ztmp = x[i][2];
-    itype = type[i];
-    jlist = firstneigh[i];
-    jnum = numneigh[i];
-
-    for (jj = 0; jj < jnum; jj++) {
-      j = jlist[jj];
-      factor_lj = special_lj[sbmask(j)];
-      j &= NEIGHMASK;
-      jtype = type[j];
-
-      delx = xtmp - x[j][0];
-      dely = ytmp - x[j][1];
-      delz = ztmp - x[j][2];
-      rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-      rij=sqrt(rsq);
-      r12=wanted_dist[itype][jtype];
- 
-      double r= sqr_dist-r12;
-      double temp= -r*F2[itype][jtype];
-      fpair = 2 * F1[itype][jtype] * temp * exp(temp * r)
-
-      f[i][0] += delx*fpair;
-      f[i][1] += dely*fpair;
-      f[i][2] += delz*fpair;
-          
-      f[j][0] -= delx*fpair;
-      f[j][1] -= dely*fpair;
-      f[j][2] -= delz*fpair;
-    
-    }
-  }*/
 }
 
 
@@ -159,11 +159,11 @@ void pair_bb_cut::compute(double **Foursets, int num_foursets)
    allocate all arrays
 ------------------------------------------------------------------------- */
 
-void pair_bb_cut::allocate()
+void pairBBcut::allocate()
 {
   allocated = 1;
   int n = atom->ntypes;
-  
+
   //needed???
   memory->create(setflag,n+1,n+1,"pair:setflag");
   for (int i = 1; i <= n; i++)
@@ -177,6 +177,7 @@ void pair_bb_cut::allocate()
   memory->create(wanted_dist,n+1,n+1,"pair:wanted_dist");
   memory->create(F1,n+1,n+1,"pair:F1");
   memory->create(F2,n+1,n+1,"pair:F2");
+  memory->create(f_fourset,nmax,3,"pair:f_fourset");//***************
 
   
   
@@ -187,7 +188,7 @@ void pair_bb_cut::allocate()
    global settings
 ------------------------------------------------------------------------- */
 
-void pair_bb_cut::settings(int narg, char **arg)
+void pairBBcut::settings(int narg, char **arg)
 {
   /*if (narg != 1) error->all(FLERR,"Illegal pair_style command");
 
@@ -207,7 +208,7 @@ void pair_bb_cut::settings(int narg, char **arg)
    set coeffs for one or more type pairs
 ------------------------------------------------------------------------- */
 
-void pair_bb_cut::coeff(int narg, char **arg)
+void pairBBcut::coeff(int narg, char **arg)
 {
  
  //TODO:choose args for the coeff setting
@@ -216,8 +217,8 @@ void pair_bb_cut::coeff(int narg, char **arg)
     error->all(FLERR,"Incorrect args for pair coefficients");
   if (!allocated) allocate();*/
   
-  for(int i=0; i<atom->ntypes; i++){
-    for(int j=0; j<atom->ntypes; j++){
+  for(int i=0; i<atom->ntypes+1; i++){
+    for(int j=0; j<atom->ntypes+1; j++){
       F1[i][j]=F2[i][j]=0;
       wanted_dist[i][j]=0;
     }
@@ -246,7 +247,7 @@ void pair_bb_cut::coeff(int narg, char **arg)
    init specific to this pair style
 ------------------------------------------------------------------------- */
 
-void pair_bb_cut::init_style()
+void pairBBcut::init_style()
 {
   // request regular or rRESPA neighbor list
 
@@ -275,19 +276,8 @@ void pair_bb_cut::init_style()
 }
 
 /* ---------------------------------------------------------------------- */
-double pair_bb_cut::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq)
-{
-  double force,philj;
 
-  double r= sqrt(rsq)-wanted_dist[itype][jtype]
-  double temp= -F2[itype][jtype] * r;
-  force = -2 * F1[itype][jtype] * temp * exp(temp * r)
-  return force;
-}
-
-/* ---------------------------------------------------------------------- */
-
-void *pair_bb_cut::extract(const char *str, int &dim)
+void *pairBBcut::extract(const char *str, int &dim)
 {
   dim = 2;
   if (strcmp(str,"F1") == 0 || strcmp(str,"F1") == 0) return (void *) F1;

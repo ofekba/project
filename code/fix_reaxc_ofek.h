@@ -40,7 +40,7 @@ class FixReaxCOfek : public Fix {
   int *numneigh; // list of numneigh for each atom
   tagint **neighid; //list of neigh per atom by ID
   double **neigh_d; //distance between neighbors
-  double **fourset; //list of fourset to appky tha potential on
+  int **fourset; //list of fourset to appky tha potential on
   int num_fourset; //0 if the list is empty. else, number of fourset
   int local_tot; //num of atoms
 

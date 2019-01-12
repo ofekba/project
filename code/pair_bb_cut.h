@@ -13,14 +13,15 @@
 
 #ifdef PAIR_CLASS
 
-PairStyle(lj/cut,pairBBcut)
+//PairStyle(reax/c,pairBBcut)
 
 #else
 
-#ifndef LMP_PAIR_LJ_CUT_H
-#define LMP_PAIR_LJ_CUT_H
+#ifndef LMP_PAIR_BB_CUT_H
+#define LMP_PAIR_BB_CUT_H
 
 #include "pair.h"
+#include "reaxc_types.h"
 
 namespace LAMMPS_NS {
 
@@ -28,12 +29,17 @@ class pairBBcut : public Pair {
  public:
   pairBBcut(class LAMMPS *);
   virtual ~pairBBcut();
-  virtual void compute(double**, int);
+  virtual void compute(int, int);
   void settings(int, char **);
   void coeff(int, char **);
   void init_style();
   double single(int, int, int, int, double);
   void *extract(const char *, int &);
+  int from_tag_to_i(tagint);
+
+  double **f_fourset;
+  int nmax;
+  void compute_pair(int, int);
 
 
  protected:
