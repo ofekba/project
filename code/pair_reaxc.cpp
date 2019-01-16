@@ -66,7 +66,7 @@ static const char cite_pair_reax_c[] =
 
 PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
 {
-  printf("\n\n\n=********=in PairReaxC !!!=********=\n\n\n");
+  //printf("\n\n\n=********=in PairReaxC !!!=********=\n\n\n");
   if (lmp->citeme) lmp->citeme->add(cite_pair_reax_c);
   single_enable = 0;
   restartinfo = 0;
@@ -136,7 +136,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
 
 PairReaxC::~PairReaxC()
 {
-  printf("\n~~~in destructor~~~");
+  //printf("\n~~~in destructor~~~");
   if (copymode) return;
 
   if (fix_reax) modify->delete_fix("REAXC");
@@ -188,7 +188,7 @@ PairReaxC::~PairReaxC()
   memory->destroy(tmpbo);
 
   delete [] pvector;
-  printf("\n~~~out destructor~~~");
+  //printf("\n~~~out destructor~~~");
 
 }
 
@@ -196,7 +196,7 @@ PairReaxC::~PairReaxC()
 
 void PairReaxC::allocate( )
 {
-  printf("\n~~~in allocate~~~");
+  //printf("\n~~~in allocate~~~");
   allocated = 1;
   int n = atom->ntypes;
 
@@ -205,7 +205,7 @@ void PairReaxC::allocate( )
   memory->create(cutghost,n+1,n+1,"pair:cutghost");
   
   //mine
-  memory->create(f_fourset,n,3,"pair:f_fourset");
+  memory->create(f_fourset,atom->nlocal,3,"pair:f_fourset");
   memory->create(wanted_dist,n+1,n+1,"pair:wanted_dist");
   memory->create(F1,n+1,n+1,"pair:F1");
   memory->create(F2,n+1,n+1,"pair:F2");
@@ -216,14 +216,14 @@ void PairReaxC::allocate( )
   chi = new double[n+1];
   eta = new double[n+1];
   gamma = new double[n+1];
-  printf("\n~~~out allocate~~~");
+  //printf("\n~~~out allocate~~~");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::settings(int narg, char **arg)
 {
-  printf("\n~~~in settings~~~");
+  //printf("\n~~~in settings~~~");
   if (narg < 1) error->all(FLERR,"Illegal pair_style command");
 
   // read name of control file or use default controls
@@ -304,14 +304,14 @@ void PairReaxC::settings(int narg, char **arg)
   // LAMMPS is responsible for generating nbrs
 
   control->reneighbor = 1;
-  printf("\n~~~out settings~~~");
+  //printf("\n~~~out settings~~~");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::coeff( int nargs, char **args )
 {
-  printf("\n~~~in coeff~~~");
+  //printf("\n~~~in coeff~~~");
   if (!allocated) allocate();
 
   if (nargs != 3 + atom->ntypes)
@@ -402,7 +402,7 @@ void PairReaxC::coeff( int nargs, char **args )
   F2[4][1]=F2[1][4]=0.75;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
 
-  printf("\n~~~out coeff~~~");
+  //printf("\n~~~out coeff~~~");
 
 }
 
@@ -410,7 +410,7 @@ void PairReaxC::coeff( int nargs, char **args )
 
 void PairReaxC::init_style( )
 {
-  printf("\n~~~in init_style~~~");
+  //printf("\n~~~in init_style~~~");
   if (!atom->q_flag)
     error->all(FLERR,"Pair style reax/c requires atom attribute q");
 
@@ -461,14 +461,14 @@ void PairReaxC::init_style( )
     delete [] fixarg;
     fix_reax = (FixReaxC *) modify->fix[modify->nfix-1];
   }
-  printf("\n~~~out init_style~~~");
+  //printf("\n~~~out init_style~~~");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::setup( )
 {
-  printf("\n~~~in setup~~~");
+  //printf("\n~~~in setup~~~");
   int oldN;
   int mincap = system->mincap;
   double safezone = system->safezone;
@@ -528,24 +528,24 @@ void PairReaxC::setup( )
 
   bigint local_ngroup = list->inum;
   MPI_Allreduce( &local_ngroup, &ngroup, 1, MPI_LMP_BIGINT, MPI_SUM, world );
-  printf("\n~~~out setup~~~");
+  //printf("\n~~~out setup~~~");
 }
 
 /* ---------------------------------------------------------------------- */
 
 double PairReaxC::init_one(int i, int j)
 {
-  printf("\n~~~in init_one~~~");
+  //printf("\n~~~in init_one~~~");
   if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
 
   cutghost[i][j] = cutghost[j][i] = cutmax;
-  printf("\n~~~out init_one~~~");
+  //printf("\n~~~out init_one~~~");
   return cutmax;
 }
 
 /* ---------------------------------------------------------------------- */
 void PairReaxC::add_bb_potential(){
-  printf("\n~~~out add_bb_potential~~~");
+  //printf("\n~~~out add_bb_potential~~~");
   for(int k = 0; k < system->N; ++k) {
     int tag=system->my_atoms[k].orig_id;
     atom->f[k][0]=system->my_atoms[k].f[0]+=f_fourset[tag-1][0];
@@ -553,26 +553,26 @@ void PairReaxC::add_bb_potential(){
     atom->f[k][2]=system->my_atoms[k].f[2]+=f_fourset[tag-1][2];
   }
   count_bb_timesteps++;
-  printf("\n~~~out add_bb_potential~~~");
+  //printf("\n~~~out add_bb_potential~~~");
 
 }
 /* ---------------------------------------------------------------------- */
 void PairReaxC::set_f_fourset(double **f){
-  printf("\n~~~in set_f_fourset~~~");
+  //printf("\n~~~in set_f_fourset~~~");
   count_bb_timesteps=0;
   flag_bb=1;
   //copy the f 2D array (to avoid aliasing)
-  for(int i=0; i<system->N; ++i)
+  for(int i=0; i<atom->nlocal; ++i)
     for(int j=0; j<3; j++)
       f_fourset[i][j]=f[i][j];
-  printf("\n~~~out set_f_fourset~~~");
+  //printf("\n~~~out set_f_fourset~~~");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::compute(int eflag, int vflag)
 {
-  printf("\n~~~in compute~~~");
+  //printf("\n~~~in compute~~~");
   double evdwl,ecoul;
   double t_start, t_end;
 
@@ -689,7 +689,17 @@ void PairReaxC::compute(int eflag, int vflag)
       }
     FindBond();
   }
-  printf("\n~~~out compute~~~");
+  printf("\n| TAG | TYPE | X[0] | X[1] | X[2] |");
+   for( int i = 0; i < atom->nlocal; ++i ){
+    printf("\n%d\t", system->my_atoms[i].orig_id);
+    printf("%d\t", system->my_atoms[i].type);
+    printf("%f\t", system->my_atoms[i].x[0]);
+    printf("%f\t", system->my_atoms[i].x[1]);
+    printf("%f", system->my_atoms[i].x[2]); 
+   }
+  printf("\n");
+  
+  //printf("\n~~~out compute~~~");
 
 }
 
@@ -740,7 +750,7 @@ void PairReaxC::set_far_nbr( far_neighbor_data *fdest,
 
 int PairReaxC::estimate_reax_lists()
 {
-  printf("\n~~~in estimate_reax_lists~~~");
+  //printf("\n~~~in estimate_reax_lists~~~");
   int itr_i, itr_j, i, j;
   int num_nbrs, num_marked;
   int *ilist, *jlist, *numneigh, **firstneigh, *marked;
@@ -780,7 +790,7 @@ int PairReaxC::estimate_reax_lists()
 
   free( marked );
   
-  printf("\n~~~out estimate_reax_lists~~~");
+  //printf("\n~~~out estimate_reax_lists~~~");
   return static_cast<int> (MAX( num_nbrs*safezone, mincap*MIN_NBRS ));
 }
 
@@ -844,7 +854,7 @@ int PairReaxC::write_reax_lists()
 
 void PairReaxC::read_reax_forces(int /*vflag*/)
 {
-  printf("\n~~~in read_reax_forces~~~");
+  //printf("\n~~~in read_reax_forces~~~");
   if(flag_bb==1){
     if(count_bb_timesteps<10000)
       add_bb_potential();
@@ -861,7 +871,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
     atom->f[i][1] += -workspace->f[i][1];
     atom->f[i][2] += -workspace->f[i][2];
   }
-  printf("\n~~~out read_reax_forces~~~");
+  //printf("\n~~~out read_reax_forces~~~");
 
 }
 
@@ -871,18 +881,18 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
 int PairReaxC::from_tag_to_i(tagint tag){
   if(tag<=0)
     return -1;
-  //printf("----> in from_tag_to_i function <----\n") ; 
+  ////printf("----> in from_tag_to_i function <----\n") ; 
   //int len=sizeof(atom->tag)/sizeof(*atom->tag);
   for(int i=0; i<nmax; i++){
     if(int(atom->tag[i])==int(tag)){
-        //printf("the tag is: %d the i is: %d\n", tag, i);
-        //printf("----> out <----\n") ;
+        ////printf("the tag is: %d the i is: %d\n", tag, i);
+        ////printf("----> out <----\n") ;
         return i;
     } 
   }
   
-//printf("no i for that shitti tag");
-  //printf("----> out no result with tag=%d<----\n", tag) ;
+////printf("no i for that shitti tag");
+  ////printf("----> out no result with tag=%d<----\n", tag) ;
   return -1;
 
 }
@@ -893,7 +903,8 @@ int PairReaxC::from_tag_to_i(tagint tag){
 void PairReaxC::compute_BB(int **fourset, int num_fourset)
 {
   printf("\n~~~in compute_BB~~~");
-  for (int i = 0; i < nmax; i++) {
+  //printf("\natom->nlocal=%d",atom->nlocal);
+  for (int i = 0; i < atom->nlocal; i++) {
     for (int j = 0; j < 3; j++) {
       f_fourset[i][j] = 0;
     }
@@ -902,16 +913,16 @@ void PairReaxC::compute_BB(int **fourset, int num_fourset)
   for(int k=0; k<num_fourset; k++){
     compute_BB_pair(fourset[k][0], fourset[k][1]);
     compute_BB_pair(fourset[k][0], fourset[k][3]);
-    compute_BB_pair(fourset[k][0], fourset[2][3]);
+    compute_BB_pair(fourset[k][2], fourset[k][3]);
   }
   set_f_fourset(f_fourset);
- printf("\n~~~out compute_BB~~~");
+ //printf("\n~~~out compute_BB~~~");
 }
 /* ---------------------------------------------------------------------- */
 void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
-    printf("\n~~~in compute_BB_pair~~~");
+    //printf("\n~~~in compute_BB_pair~~~");
     int i,j,itype, jtype;
-    double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq;
+    double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq, rij;
     double **x = atom->x;
     double **f = atom->f;
     int *type = atom->type;
@@ -931,16 +942,18 @@ void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     delz = ztmp - x[j][2];
       
     rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-    fpair=single_BB(i_tag, j_tag, itype, jtype, rsq);
+    rij=sqrt(rsq);
+    fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
+    printf("\natomi_tag=%d, atomj_tag=%d, rsq=%f. rij=%f, fpair=%f",i_tag,j_tag,rsq,rij,fpair);
 
-    f_fourset[i_tag-1][0] += delx*fpair;
-    f_fourset[i_tag-1][1] += dely*fpair;
-    f_fourset[i_tag-1][2] += delz*fpair;
+    f_fourset[i_tag-1][0] += (delx*fpair)/rij;
+    f_fourset[i_tag-1][1] += (dely*fpair)/rij;
+    f_fourset[i_tag-1][2] += (delz*fpair)/rij;
             
-    f_fourset[j_tag-1][0] -= delx*fpair;
-    f_fourset[j_tag-1][1] -= dely*fpair;
-    f_fourset[j_tag-1][2] -= delz*fpair;
-    printf("\n~~~out compute_BB_pair~~~");
+    f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
+    f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
+    f_fourset[j_tag-1][2] -= (delz*fpair)/rij;
+    //printf("\n~~~out compute_BB_pair~~~");
 
 }
 /* ---------------------------------------------------------------------- */
@@ -952,9 +965,11 @@ double PairReaxC::single_BB(int /*i*/, int /*j*/, int itype, int jtype, double r
 {
   printf("\n~~~out single_BB~~~");
   double force;
-  double r= sqrt(rsq)-wanted_dist[itype][jtype];
+  double r= rsq-wanted_dist[itype][jtype];
   double temp= -F2[itype][jtype] * r;
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
+  printf("\n\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
+  printf("r=%f, temp=%f, force=%f\n", r, temp, force);
   printf("\n~~~out single_BB~~~");
   return force;
 }
@@ -996,7 +1011,7 @@ double PairReaxC::memory_usage()
   bytes += 1.0 * system->N * sizeof(double);
 
   //for f_fourset
-  bytes += 3.0 * system->N * sizeof(double);
+  bytes += 3.0 * atom->nlocal * sizeof(double);
 
   // From reaxc_allocate: BO
   bytes += 1.0 * system->total_cap * sizeof(reax_atom);
@@ -1022,7 +1037,7 @@ double PairReaxC::memory_usage()
 
 void PairReaxC::FindBond()
 {
-  printf("\n~~~in FindBond~~~");
+  //printf("\n~~~in FindBond~~~");
   int i, j, pj, nj;
   double bo_tmp, bo_cut;
 
@@ -1046,5 +1061,5 @@ void PairReaxC::FindBond()
       }
     }
   }
-  printf("\n~~~out FindBond~~~");
+  //printf("\n~~~out FindBond~~~");
 }
