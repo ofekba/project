@@ -3,6 +3,9 @@
 ##### fix_reaxc_ofek:
 The code that implement the algorithem in the article
 
+##### pair_reaxc:
+The code that calculate the Boost Bond extra potential with the ReaxFF force field potential.
+
 ##### nvt_run:
 The script code and input files to test the code in lammps
 
