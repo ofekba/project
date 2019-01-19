@@ -10,16 +10,16 @@ The code that calculate the Boost Bond extra potential with the ReaxFF force fie
 The script code and input files to test the code in lammps
 
 #### how to run it?
-1. download lammps source code from [here](https://github.com/lammps/lammps.git)
-2. copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
-3. copy the files pair_reaxc.h, pair_reaxc.cpp to lammps/src/USER-REAXC directory
-3. open terminal in the lammps/src directory
-5. use those commands:
+1. Download lammps source code from [here](https://github.com/lammps/lammps.git)
+2. Copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
+3. Copy the files pair_reaxc.h, pair_reaxc.cpp to lammps/src/USER-REAXC directory
+3. Open terminal in the lammps/src directory
+5. Use those commands:
   >> make yes-USER-REAXC
   
   >> make serial //compile the lammps code for serial use.
-6. download nvt_run folder and open terminal in it
-7. run the command:
+6. Download nvt_run folder and open terminal in it
+7. Run the command:
   >>path/to/lammps/src/lmp_serial < in.nvt
 
 
