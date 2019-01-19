@@ -16,6 +16,7 @@ The script code and input files to test the code in lammps
 3. Open terminal in the lammps/src directory
 5. Use those commands:
   >> make yes-USER-REAXC
+  
   >> make serial //compile the lammps code for serial use.
 6. Download nvt_run folder and open terminal in it
 7. Run the command:
