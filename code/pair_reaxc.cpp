@@ -920,12 +920,6 @@ int PairReaxC::from_tag_to_i(tagint tag){
 
 void PairReaxC::set_fourset(int **foursets, int num_foursets){
   //printf("\n~~~in set_fourset~~~");
-  //printf("\n\n**** count_bb_timesteps=%d ****\n\n",count_bb_timesteps);
-  if(count_bb_timesteps>0){
-    printf("\nwant to operate the potential");
-    return;
-  }
-
     
   count_bb_timesteps=0;
   flag_bb=1;
@@ -985,6 +979,22 @@ void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     rij=sqrt(rsq);
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
     //printf("\natomi_tag=%d, atomj_tag=%d, rsq=%f. rij=%f, r12=%f",i_tag,j_tag,rsq,rij, wanted_dist[itype][jtype]);
+
+    //print the distance at the first 2 timesteps and at the last 2 timesteps
+    if(count_bb_timesteps<2 || count_bb_timesteps>9998){
+      if( (itype==1 && jtype==4))
+        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f", rij, i_tag, j_tag);
+      else if( (itype==4 && jtype==1))
+        printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f", rij, i_tag, j_tag);
+      else if( (itype==3 && jtype==2))
+        printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f", rij, i_tag, j_tag);
+      else if( (itype==2 && jtype==3))
+        printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f", rij, i_tag, j_tag);
+      else if( (itype==3 && jtype==1))
+        printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f", rij, i_tag, j_tag);
+      else if( (itype==1 && jtype==3))
+        printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f", rij, i_tag, j_tag);
+    }
     fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
     
 

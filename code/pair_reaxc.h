@@ -63,10 +63,12 @@ class PairReaxC : public Pair {
   double **f_fourset;
   double **F1,**F2, **wanted_dist;
   void add_bb_potential();
-  void set_f_fourset(double**);
+  void set_fourset(int**, int);
+  int **fourset;
+  int num_fourset;
   int count_bb_timesteps;
   int flag_bb;
-  void compute_BB(int**, int);
+  void compute_BB();
   void compute_BB_pair(int, int);
   double single_BB(int, int, int, int, double);
   int from_tag_to_i(tagint);

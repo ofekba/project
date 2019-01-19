@@ -61,8 +61,8 @@ FixReaxCOfek::FixReaxCOfek(LAMMPS *lmp, int narg, char **arg) :
   if (atom->tag_consecutive() == 0)
     error->all(FLERR,"Atom IDs must be consecutive for fix reax/c bonds");
 
-  neigh_d= NULL;
-  neighid = NULL;
+  neigh_list=NULL;
+
   numneigh = NULL;
   local_tot = static_cast<int> (atom->natoms);
   fourset = NULL;
@@ -138,8 +138,7 @@ void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/)
   for (i = 0; i < local_tot; i++) {
     numneigh[i] = 0;
     for (j = 0; j < local_tot; j++) {
-      neighid[i][j] = 0;
-      neigh_d[i][j]=0.0;//**************
+      neigh_list[i][j]=-1;
     }
   }
   //printf("\n****** 2 ******\n");
@@ -174,14 +173,15 @@ void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 {
   //printf("\n=========in FindNbr=========\n");//************
-  int nlocal_tot = static_cast<int> (atom->natoms);
+  int nlocal_tot = static_cast<int> (atom->nlocal);
   if (atom->nmax > nmax) {
     nmax = atom->nmax;
     //printf("\n==================nmax is=%d\n", nmax);//************
   }
   //printf("\n==================nlocal_tot=%d \n", nlocal_tot);
   
-  int i, j, pj, nj;
+  int i, j, pj;
+  int tag_i, tag_j;
   far_neighbor_data *nbr_pj;
   int start_i, end_i;
   int type_i, type_j;
@@ -189,57 +189,44 @@ void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
   reax_list *far_nbrs = (reaxc->lists)+ FAR_NBRS;
   double cutoff = reaxc->control->bond_cut;
 
-int num_iter;
-if(nmax>nlocal_tot){
-  num_iter=200;
-}
-else
-  num_iter=nlocal_tot;
-//printf("\n==================\n");
-/*for(i = 0; i <200 ; i++){
-  printf("***1***")
-    atom_i = &(reaxc->system->my_atoms[i]);
-    int tag_i=(int)atom_i->orig_id;
-    type_i  = atom_i->type;
-    //printf("\ni=%d, orig_id=%d, imprt_id=%d, type=%d",i,tag_i, atom_i->imprt_id, type_i);
-}*/
-//printf("\n==================\n");
-//printf("MAXREAXBOND=%d",MAXREAXBOND);
 
   for (i = 0; i < reaxc->system->N; i++) {
     //printf("\n=============i=%d=========\n",i);
     atom_i = &(reaxc->system->my_atoms[i]);
     type_i  = atom_i->type;
-    int tag_i=(int)atom_i->orig_id;
+    tag_i=(int)atom_i->orig_id;
     if(tag_i <= 0||tag_i > nlocal_tot)
       continue;
     start_i = Start_Index(i, far_nbrs);
     end_i  = End_Index(i, far_nbrs);
-    nj=numneigh[tag_i-1];
     for( pj = start_i; pj < end_i; ++pj ) {
       nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
-      if (nbr_pj->d <= cutoff && nj < MAXREAXBOND) {
+      if (nbr_pj->d <= cutoff) {
         j = nbr_pj->nbr;
         atom_j = &(reaxc->system->my_atoms[j]);
         if(atom_j->orig_id > 0 && atom_j->orig_id<=nlocal_tot){
-          type_j = atom_j->type;
-          neighid[tag_i-1][nj] = atom_j->orig_id;
-          //printf("\nd is=%f in [%d] [%d]", nbr_pj->d, tag_i ,nj);//***************
-          neigh_d[tag_i-1][nj]=nbr_pj->d;
-          nj++;
+          tag_j=atom_j->orig_id;
+          if(neigh_list[tag_i-1][tag_j-1] == -1){
+            numneigh[tag_i-1]++;
+            numneigh[tag_j-1]++;
+          }
+          neigh_list[tag_i-1][tag_j-1]=nbr_pj->d;
+          neigh_list[tag_j-1][tag_i-1]=nbr_pj->d;
          }
       }
     }
-    numneigh[tag_i-1]=nj;
-    //numNeighPerAtom[tag_i]=nj;
   }
-    /*for(i=0; i<nlocal_tot; i++){
+
+//print the neighbors list
+  /*if(update->ntimestep<99){
+    for(i=0; i<nlocal_tot; i++){
         printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
-        for(j=0; j<numneigh[i]; j++){
-          printf("|id=%d, distance=%f",int(neighid[i][j]), neigh_d[i][j]);
+        for(j=0; j<nlocal_tot; j++){
+          printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
         }
         printf("|\n\n");
-    }*/
+    }
+  }*/
      // printf("\n=============finish FindNbr=========\n");
 }
 
@@ -251,18 +238,11 @@ else
 int FixReaxCOfek::from_tag_to_i(tagint tag){
   if(tag<=0)
     return -1;
-  //printf("----> in from_tag_to_i function <----\n") ; 
-  //int len=sizeof(atom->tag)/sizeof(*atom->tag);
   for(int i=0; i<local_tot; i++){
     if(int(atom->tag[i])==int(tag)){
-        //printf("the tag is: %d the i is: %d\n", tag, i);
-        //printf("----> out <----\n") ;
         return i;
     } 
   }
-  
-//printf("no i for that shitti tag");
-  //printf("----> out no result with tag=%d<----\n", tag) ;
   return -1;
 
 }
@@ -276,7 +256,7 @@ void FixReaxCOfek::OfekFunc(){
 
   int nlocal = atom->nlocal;
   //int nlocal=local_tot;
-  printf("\n============in OfekFunc===============\n");
+  //printf("\n============in OfekFunc===============\n");
   
   //mine
   tagint a_tag, b_tag, c_tag, d_tag;
@@ -290,96 +270,78 @@ void FixReaxCOfek::OfekFunc(){
   int const THIRD_TYPE=4;// N TYPE  NUM
   int const FORTH_TYPE=1;// C TYPE  NUM
   for (a = 0; a < nlocal; a++) {
-    //printf("**** 1 ") ;
     a_tag = atom->tag[a];
-    //printf(" 11 ") ;
     a_type = atom->type[a];
-    //printf(" 111 ") ;
     int success=0;
-      if(a_type==FIRST_TYPE){
-        //printf(" 2 ") ;
-        a_numNbr = nint(numneigh[a_tag-1]);
-        for (b = 0; b < a_numNbr; b++) {
-          //printf(" 3 ") ;
-          if(success==1)
-            break;
-          b_tag = neighid[a-1][b];
-          i=from_tag_to_i(b_tag);
-          if(i==-1)
-            break;
-          ////printf("distance between neigh=%f in [%d] [%d] \n", neigh_d[a][b], a, b);
-          b_type = atom->type[i]; 
-          //printf(" 4 ") ;   
-          if(b_type==SECOND_TYPE){
-              b_numNbr=nint(numneigh[b_tag-1]); 
-              ////printf("\nfirst cond OK\n");//**********
-               //printf(" 5 ") ;
-              for (c = 0; c < b_numNbr; c++) {
-                //printf(" 6 ") ;
-                if(success==1)
-                  break;
-                c_tag = neighid[i-1][c]; 
-                i=from_tag_to_i(c_tag);
-                if(i==-1)
-                  break;
-                c_type = atom->type[i]; 
-                  
-                    if(c_type==THIRD_TYPE){
-                      ////printf("\nsecond cond OK\n");//**********
-                      c_numNbr=nint(numneigh[c_tag-1]);
-                     // printf("c_numNbr=%d, c_tag=%d\n",c_numNbr, c_tag);
-                      for(d = 0; d < c_numNbr; d++) {
-                       // printf(" 7 ") ; 
-                        if(success==1)
+    if(a_type==FIRST_TYPE){
+      a_numNbr = nint(numneigh[a_tag-1]);
+      for (b = 0; b < a_numNbr; b++) {
+        if(success==1)
+          break;
+        b_tag = b+1;
+        i=from_tag_to_i(b_tag);
+        if(i==-1)
+          break;
+        b_type = atom->type[i]; 
+        if(b_type==SECOND_TYPE){
+          if( 1.5<neigh_list[a][b] && neigh_list[a][b]<8.0 ){
+            b_numNbr=nint(numneigh[b_tag-1]); 
+           // printf("\nfirst cond OK\n");//**********
+
+            for (c = 0; c < b_numNbr; c++) {
+              if(success==1)
+                break;
+              c_tag = c+1; 
+              i=from_tag_to_i(c_tag);
+              if(i==-1)
+                break;
+              c_type = atom->type[i]; 
+              if(c_type==THIRD_TYPE){
+                if( 0.9<neigh_list[b][c] && neigh_list[b][c]<1.2 ){
+                  //printf("\nsecond cond OK\n");//**********
+
+                  c_numNbr=nint(numneigh[c_tag-1]);
+                  for(d = 0; d < c_numNbr; d++) {
+                    if(success==1)
+                      break;
+                    d_tag = d+1;
+                    i=from_tag_to_i(d_tag);
+                    if(i==-1)
+                      break;
+                    d_type = atom->type[i];
+                    
+                    if(d_type==FORTH_TYPE){
+                      if( 3.0<neigh_list[c][d] && neigh_list[c][d]<8.0 ){
+                        //printf("\nthird cond OK\n");//**********
+                        
+                        if( 1.3<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<1.6 ) {
+                          //printf("\nfourth cond OK\n");//**********
+                          
+                          num_fourset++;
+                          fourset[num_fourset-1][0]=a_tag; //O
+                          fourset[num_fourset-1][1]=b_tag; //H
+                          fourset[num_fourset-1][2]=c_tag; //N
+                          fourset[num_fourset-1][3]=d_tag; //C
+                          printf("**** success! ****\n") ; 
+                          success=1;
                           break;
-                       // printf(" 8 ");
-                        d_tag = neighid[i-1][d];
-                       // printf(" 9 ");
-                        i=from_tag_to_i(d_tag);
-                        //printf(" 10 ");
-                        if(i==-1)
-                          break;
-                       // printf(" 11 ");
-                        d_type = atom->type[i];
-                       // printf(" 12 ");
-                          if(d_type==FORTH_TYPE){
-                            //printf(" 13 ") ; 
-                            //printf("\nthird cond OK\n");//**********
-                            d_numNbr=nint(numneigh[d_tag-1]);
-                            for (int e = 0; e < d_numNbr; e++) {
-                              if(neighid[i-1][e]==a_tag) {
-                                //printf(" 14 ****\n") ; 
-                                num_fourset++;
-                                printf("\n\n======================") ; 
-                                printf("\na=%d a_tag=%d a_type=%d", a, a_tag, a_type);
-                                printf("\nb=%d b_tag=%d b_type=%d", b, b_tag, b_type);
-                                printf("\nc=%d c_tag=%d c_type=%d", c, c_tag, c_type);
-                                printf("\nd=%d d_tag=%d d_type=%d\n", d, d_tag, d_type);
-                                printf("======================\n\n") ;
-                                fourset[num_fourset-1][0]=a_tag;
-                                fourset[num_fourset-1][1]=b_tag;
-                                fourset[num_fourset-1][2]=c_tag;
-                                fourset[num_fourset-1][3]=d_tag;
-                                printf("**** success! ****\n") ; 
-                                success=1;
-                                break;
-                              } 
-                            }
-                          }
+                        }
                       }
-                    }
+                    } 
+                  }
                 }
               }
-
+            }
+          }
         }
-      
       }
+    }
   }
-  printf("finish over the neigh list\n");
+ // printf("finish over the neigh list\n");
   if(num_fourset!=0){
     reaxc->set_fourset(fourset, num_fourset);
   }
-  printf("\n\n==========finish ofek func=============\n");
+  //printf("\n\n==========finish ofek func=============\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -396,8 +358,7 @@ int FixReaxCOfek::nint(const double &r)
 
 void FixReaxCOfek::destroy()
 {
-  memory->destroy(neigh_d);//**************
-  memory->destroy(neighid);
+  memory->destroy(neigh_list);
   memory->destroy(numneigh);
   memory->destroy(fourset);
 
@@ -407,9 +368,8 @@ void FixReaxCOfek::destroy()
 
 void FixReaxCOfek::allocate()
 {
-  memory->create(neigh_d,nmax,MAXREAXBOND,"reax/c/ofek:neigh_d");//***************
   memory->create(fourset,nmax,4,"reax/c/ofek:fourset");//***************
-  memory->create(neighid,nmax,MAXREAXBOND,"reax/c/ofek:neighid");
+  memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/ofek:neigh_list");
   memory->create(numneigh,nmax,"reax/c/ofek:numneigh");
 }
 
@@ -421,9 +381,8 @@ double FixReaxCOfek::memory_usage()
   nmax=local_tot;
   //bytes = 3.0*nmax*sizeof(double);//??
   bytes = nmax*sizeof(int);//numneigh
-  bytes += 1.0*nmax*MAXREAXBOND*sizeof(double);//numneigh
-  bytes += 1.0*nmax*MAXREAXBOND*sizeof(int);//neighid
   bytes += 1.0*nmax*4*sizeof(int);//fourset
+  bytes += 1.0*atom->nlocal*atom->nlocal*sizeof(double);//neigh_list
 
   return bytes;
 }
