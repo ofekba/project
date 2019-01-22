@@ -49,7 +49,7 @@ class FixReaxCOfek : public Fix {
   void FindNbr(struct _reax_list*, int &);
   int nint(const double &);
   virtual double memory_usage();
-  void OfekFunc(); //*****my func*****
+  void checkForFoursets(); //*****my func*****
   int from_tag_to_i(tagint tag);//*****my func*****
 
   bigint nvalid, nextvalid();

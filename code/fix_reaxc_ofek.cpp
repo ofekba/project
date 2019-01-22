@@ -152,7 +152,7 @@ void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 //printf("\n****** 3 ******\n");
   FindNbr(lists, numbonds);
   //printf("\n****** 4 ******\n");
-  OfekFunc();
+  checkForFoursets();
 
   //printf("\n=======finish Output_ReaxC_Bonds=====\n");//************Nbr
 
@@ -252,11 +252,11 @@ int FixReaxCOfek::from_tag_to_i(tagint tag){
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::OfekFunc(){
+void FixReaxCOfek::checkForFoursets(){
 
   int nlocal = atom->nlocal;
   //int nlocal=local_tot;
-  //printf("\n============in OfekFunc===============\n");
+  //printf("\n============in checkForFoursets===============\n");
   
   //mine
   tagint a_tag, b_tag, c_tag, d_tag;
