@@ -125,6 +125,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
+  MAX_NUM_TIMESPACE=2000;
 
   nextra = 14;
   pvector = new double[nextra];
@@ -392,17 +393,17 @@ void PairReaxC::coeff( int nargs, char **args )
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
 
   //O-C (3-1)
-  F1[3][1]=F1[1][3]=50;
+  F1[3][1]=F1[1][3]=25;
   F2[3][1]=F2[1][3]=0.5;
   wanted_dist[3][1]=wanted_dist[1][3]=1.95;
 
   //O-H (3-2)
-  F1[3][2]=F1[2][3]=250;
+  F1[3][2]=F1[2][3]=125;
   F2[3][2]=F2[2][3]=0.75;
   wanted_dist[3][2]=wanted_dist[2][3]=1.1;
 
   //N-C (4-1)
-  F1[4][1]=F1[1][4]=300;
+  F1[4][1]=F1[1][4]=150;
   F2[4][1]=F2[1][4]=0.75;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
 
@@ -847,7 +848,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
   //printf("\n~~~in read_reax_forces~~~");
   if(flag_bb==1){
     //printf("\nflagBB is on\n");
-    if(count_bb_timesteps<10000){
+    if(count_bb_timesteps<MAX_NUM_TIMESPACE){
       //printf("\ncount_bb_timesteps=%d",count_bb_timesteps);
         count_bb_timesteps++;
         add_bb_potential();
@@ -855,7 +856,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
     else{
       flag_bb=0;
       count_bb_timesteps=0;
-      printf("\n\n**** finish 10,000 timesteps ****\n\n"); 
+      printf("\n\n**** finish %d timesteps ****\n\n", MAX_NUM_TIMESPACE); 
     }
   }
   //printf("\nadding the force");
@@ -981,19 +982,19 @@ void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     //printf("\natomi_tag=%d, atomj_tag=%d, rsq=%f. rij=%f, r12=%f",i_tag,j_tag,rsq,rij, wanted_dist[itype][jtype]);
 
     //print the distance at the first 2 timesteps and at the last 2 timesteps
-    if(count_bb_timesteps<2 || count_bb_timesteps>9998){
+    if(count_bb_timesteps<2 || count_bb_timesteps>MAX_NUM_TIMESPACE-2){
       if( (itype==1 && jtype==4))
-        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f", i_tag, j_tag, rij);
       else if( (itype==4 && jtype==1))
-        printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f", i_tag, j_tag, rij);
       else if( (itype==3 && jtype==2))
-        printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f", i_tag, j_tag, rij);
       else if( (itype==2 && jtype==3))
-        printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f", i_tag, j_tag, rij);
       else if( (itype==3 && jtype==1))
-        printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f", i_tag, j_tag, rij);
       else if( (itype==1 && jtype==3))
-        printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f", rij, i_tag, j_tag);
+        printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f", i_tag, j_tag, rij);
     }
     fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
     

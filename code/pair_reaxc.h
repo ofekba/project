@@ -72,6 +72,7 @@ class PairReaxC : public Pair {
   void compute_BB_pair(int, int);
   double single_BB(int, int, int, int, double);
   int from_tag_to_i(tagint);
+  int MAX_NUM_TIMESPACE; //number of time steps the the potential works.
 
  protected:
   double cutmax;

@@ -13,12 +13,12 @@
 
 #ifdef FIX_CLASS
 
-FixStyle(reax/c/ofek,FixReaxCOfek)
+FixStyle(reax/c/checkFourset,FixReaxCCheckFourset)
 
 #else
 
-#ifndef LMP_FIX_REAXC_OFEK_H
-#define LMP_FIX_REAXC_OFEK_H
+#ifndef LMP_FIX_REAXC_CHECK_FOURSET_H
+#define LMP_FIX_REAXC_CHECK_FOURSET_H
 
 #include <cstdio>
 #include "fix.h"
@@ -26,10 +26,10 @@ FixStyle(reax/c/ofek,FixReaxCOfek)
 
 namespace LAMMPS_NS {
 
-class FixReaxCOfek : public Fix {
+class FixReaxCCheckFourset : public Fix {
  public:
-  FixReaxCOfek(class LAMMPS *, int, char **);
-  virtual ~FixReaxCOfek();
+  FixReaxCCheckFourset(class LAMMPS *, int, char **);
+  virtual ~FixReaxCCheckFourset();
   int setmask();
   virtual void init();
   void setup(int);
@@ -51,6 +51,8 @@ class FixReaxCOfek : public Fix {
   virtual double memory_usage();
   void checkForFoursets(); //*****my func*****
   int from_tag_to_i(tagint tag);//*****my func*****
+  FILE *fp;
+  void followDistFunc();
 
   bigint nvalid, nextvalid();
   struct _reax_list *lists;

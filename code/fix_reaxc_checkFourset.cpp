@@ -18,7 +18,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "fix_ave_atom.h"
-#include "fix_reaxc_ofek.h"
+#include "fix_reaxc_checkFourset.h"
 #include "atom.h"
 #include "update.h"
 #include "pair_reaxc.h"
@@ -42,10 +42,10 @@ using namespace FixConst;
 
 /* ---------------------------------------------------------------------- */
 
-FixReaxCOfek::FixReaxCOfek(LAMMPS *lmp, int narg, char **arg) :
+FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg)
 {
-  if (narg != 4) error->all(FLERR,"Illegal fix reax/c/ofek command");
+  if (narg != 5) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
 
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
@@ -56,7 +56,34 @@ FixReaxCOfek::FixReaxCOfek(LAMMPS *lmp, int narg, char **arg) :
   nevery = force->inumeric(FLERR,arg[3]);
 
   if (nevery <= 0 )
-    error->all(FLERR,"Illegal fix reax/c/ofek command, illigal nevery");//**********
+    error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal nevery");//**********
+
+//for fp
+  if (me == 0) {
+      char *suffix = strrchr(arg[4],'.');
+      if (suffix && strcmp(suffix,".gz") == 0) {
+  #ifdef LAMMPS_GZIP
+        char gzip[128];
+        snprintf(gzip,128,"gzip -6 > %s",arg[4]);
+  #ifdef _WIN32
+        fp = _popen(gzip,"wb");
+  #else
+        fp = popen(gzip,"w");
+  #endif
+  #else
+        error->one(FLERR,"Cannot open gzipped file");
+  #endif
+      } else fp = fopen(arg[4],"w");
+
+      if (fp == NULL) {
+        char str[128];
+        snprintf(str,128,"Cannot open fix reax/c/bonds file %s",arg[4]);
+        error->one(FLERR,str);
+      }
+    }
+
+
+
 
   if (atom->tag_consecutive() == 0)
     error->all(FLERR,"Atom IDs must be consecutive for fix reax/c bonds");
@@ -73,17 +100,18 @@ FixReaxCOfek::FixReaxCOfek(LAMMPS *lmp, int narg, char **arg) :
 
 /* ---------------------------------------------------------------------- */
 
-FixReaxCOfek::~FixReaxCOfek()
+FixReaxCCheckFourset::~FixReaxCCheckFourset()
 {
   //printf("\n****in destructor*****\n");
   MPI_Comm_rank(world,&me);
   destroy();
+  if (me == 0) fclose(fp);
   //printf("\n*-*-*-*finish the fix of ofki ofkilish :)*-*-*-*\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
-int FixReaxCOfek::setmask()
+int FixReaxCCheckFourset::setmask()
 {
   //printf("\n*****in setmask*****\n");
   int mask = 0;
@@ -94,7 +122,7 @@ int FixReaxCOfek::setmask()
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::setup(int /*vflag*/)
+void FixReaxCCheckFourset::setup(int /*vflag*/)
 {
   //printf("\n****in setup*****\n");
   end_of_step();
@@ -103,26 +131,28 @@ void FixReaxCOfek::setup(int /*vflag*/)
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::init()
+void FixReaxCCheckFourset::init()
 {
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
-  if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/ofek without "
+  if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
 
 }
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::end_of_step()
+void FixReaxCCheckFourset::end_of_step()
 {
   //printf("\n****in end_of_step*****\n");
   Output_ReaxC_Bonds(update->ntimestep);
+  followDistFunc();
+  if (me == 0) fflush(fp);
   //printf("\n****out end_of_step*****\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/)
+void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 {
   //printf("\n****in Output_ReaxC_Bonds*****\n");
   int i, j;
@@ -170,7 +200,7 @@ void FixReaxCOfek::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 
 
 
-void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
+void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 {
   //printf("\n=========in FindNbr=========\n");//************
   int nlocal_tot = static_cast<int> (atom->nlocal);
@@ -235,7 +265,7 @@ void FixReaxCOfek::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 //TODO-ןmprove efficiency OR find builded method.
 
 
-int FixReaxCOfek::from_tag_to_i(tagint tag){
+int FixReaxCCheckFourset::from_tag_to_i(tagint tag){
   if(tag<=0)
     return -1;
   for(int i=0; i<local_tot; i++){
@@ -252,11 +282,11 @@ int FixReaxCOfek::from_tag_to_i(tagint tag){
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::checkForFoursets(){
+void FixReaxCCheckFourset::checkForFoursets(){
 
   int nlocal = atom->nlocal;
   //int nlocal=local_tot;
-  //printf("\n============in checkForFoursets===============\n");
+  //printf("\n============in checkFourset===============\n");
   
   //mine
   tagint a_tag, b_tag, c_tag, d_tag;
@@ -341,12 +371,43 @@ void FixReaxCOfek::checkForFoursets(){
   if(num_fourset!=0){
     reaxc->set_fourset(fourset, num_fourset);
   }
-  //printf("\n\n==========finish ofek func=============\n");
+  //printf("\n\n==========finish checkFourset func=============\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
-int FixReaxCOfek::nint(const double &r)
+void FixReaxCCheckFourset::followDistFunc()
+{
+  double x0, x1, x2;
+  double del0, del1, del2;
+  double dist;
+  fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
+  for( int i = 0; i < atom->nlocal; ++i ){
+    fprintf(fp,"# atom %d type %d\t",atom->tag[i], atom->type[i]);
+    x0=atom->x[i][0];
+    x1=atom->x[i][1];
+    x2=atom->x[i][2];
+    for( int j = 0; j < atom->nlocal; ++j ){
+      
+        del0=x0-atom->x[j][0];
+        del1=x1-atom->x[j][1];
+        del2=x2-atom->x[j][2];
+        dist=del0*del0+del1*del1+del2*del2;
+        dist=sqrt(dist);
+        fprintf(fp,"%d: %f\t",atom->tag[j], dist);
+        /*if(j==i && update->ntimestep==50){
+          printf(tag i=%d, )
+        }*/
+    }
+    fprintf(fp,"\n");
+  }
+  fprintf(fp,"#\n");
+}
+
+/* ---------------------------------------------------------------------- */
+
+
+int FixReaxCCheckFourset::nint(const double &r)
 {
   int i = 0;
   if (r>0.0) i = static_cast<int>(r+0.5);
@@ -356,7 +417,7 @@ int FixReaxCOfek::nint(const double &r)
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::destroy()
+void FixReaxCCheckFourset::destroy()
 {
   memory->destroy(neigh_list);
   memory->destroy(numneigh);
@@ -366,16 +427,16 @@ void FixReaxCOfek::destroy()
 
 /* ---------------------------------------------------------------------- */
 
-void FixReaxCOfek::allocate()
+void FixReaxCCheckFourset::allocate()
 {
-  memory->create(fourset,nmax,4,"reax/c/ofek:fourset");//***************
-  memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/ofek:neigh_list");
-  memory->create(numneigh,nmax,"reax/c/ofek:numneigh");
+  memory->create(fourset,nmax,4,"reax/c/checkFourset:fourset");//***************
+  memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
+  memory->create(numneigh,nmax,"reax/c/checkFourset:numneigh");
 }
 
 /* ---------------------------------------------------------------------- */
 
-double FixReaxCOfek::memory_usage()
+double FixReaxCCheckFourset::memory_usage()
 {
   double bytes;
   nmax=local_tot;
