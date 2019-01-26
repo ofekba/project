@@ -11,6 +11,7 @@
 [Theoretical Info](https://github.com/ofekba/project/wiki/Theoretical-info)
 
 For more information open the "project proposal" file.
+The project proposel includes introduction, literature review, the problem, and the solution plan.
 
 
 
