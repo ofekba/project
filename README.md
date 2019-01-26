@@ -8,6 +8,10 @@
 
 [Project's Diary](https://github.com/ofekba/project/wiki/Meetings-diary)
 
+[Theoretical Info](https://github.com/ofekba/project/wiki/Theoretical-info)
+
+For more information open the "project proposal" file.
+
 
 
 ## Disclaimer
