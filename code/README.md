@@ -9,6 +9,17 @@ The code that calculate the Boost Bond extra potential with the ReaxFF force fie
 ##### nvt_run:
 The script code and input files to test the code in lammps
 
+
+##### code.py:
+to use it please add the line:
+>> followDistFunc();
+
+as a second line in the function end_of_step() on file fix_reaxc_ofek.cpp.
+this function create text file that follows the distance between each 2 atoms.
+code.py file reads the created dist file and display Graph of the distance between each 2 atoms.
+to run this file:
+>> python3 code.py
+
 #### how to run it?
 1. Download lammps source code from [here](https://github.com/lammps/lammps.git)
 2. Copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
