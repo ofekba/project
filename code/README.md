@@ -25,10 +25,11 @@ to run this file:
 2. Copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
 3. Copy the files pair_reaxc.h, pair_reaxc.cpp to lammps/src/USER-REAXC directory
 3. Open terminal in the lammps/src directory
-5. Use those commands:
+5. Use those commands to compile the lammps code:
   >> make yes-USER-REAXC
   
-  >> make serial //compile the lammps code for serial use.
+  >> make serial
+  
 6. Download nvt_run folder and open terminal in it
 7. Run the command:
   >>path/to/lammps/src/lmp_serial < in.nvt
