@@ -140,7 +140,7 @@ void FixReaxCCheckFourset::init()
 }
 
 /* ---------------------------------------------------------------------- */
-
+//function that create a file that following the distance between all of the atoms.
 void FixReaxCCheckFourset::end_of_step()
 {
   //printf("\n****in end_of_step*****\n");
@@ -262,7 +262,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 
 /* ---------------------------------------------------------------------- */
 
-//TODO-ןmprove efficiency OR find builded method.
+//TODO-improve efficiency OR find builded method.
 
 
 int FixReaxCCheckFourset::from_tag_to_i(tagint tag){
@@ -383,7 +383,7 @@ void FixReaxCCheckFourset::followDistFunc()
   double dist;
   fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
   for( int i = 0; i < atom->nlocal; ++i ){
-    fprintf(fp,"# atom %d type %d\t",atom->tag[i], atom->type[i]);
+    fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
     x0=atom->x[i][0];
     x1=atom->x[i][1];
     x2=atom->x[i][2];
@@ -394,7 +394,7 @@ void FixReaxCCheckFourset::followDistFunc()
         del2=x2-atom->x[j][2];
         dist=del0*del0+del1*del1+del2*del2;
         dist=sqrt(dist);
-        fprintf(fp,"%d: %f\t",atom->tag[j], dist);
+        fprintf(fp,"%d %f ",atom->tag[j], dist);
         /*if(j==i && update->ntimestep==50){
           printf(tag i=%d, )
         }*/
