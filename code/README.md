@@ -1,6 +1,6 @@
 ### The code of lammps I changed
 
-##### fix_reaxc_ofek:
+##### fix_reaxc_checkFourset:
 The code that implement the algorithem in the article
 
 ##### pair_reaxc:
