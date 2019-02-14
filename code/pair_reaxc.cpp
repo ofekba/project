@@ -126,6 +126,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   F1=NULL;
   F2=NULL;
   MAX_NUM_TIMESPACE=2000;
+  tag_to_i=NULL;
 
   nextra = 14;
   pvector = new double[nextra];
@@ -134,6 +135,17 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   fixspecies_flag = 0;
 
   nmax = 0;
+
+  //FOR ENERGY_FP
+  energy_fp = fopen("energy.reax","w");
+  if (energy_fp == NULL) {
+    char str[128];
+    snprintf(str,128,"Cannot open fix reax/c/bonds file energy.reax");
+    error->one(FLERR,str);
+  }
+
+
+
   //printf("\n~~~out constructor~~~\n\n");
 }
 
@@ -175,6 +187,8 @@ PairReaxC::~PairReaxC()
   memory->destroy( wanted_dist );
   memory->destroy( F1 );
   memory->destroy( F2 );
+  fclose(energy_fp);
+  memory->destroy(tag_to_i);
 
 
 
@@ -216,6 +230,7 @@ void PairReaxC::allocate( )
   memory->create(wanted_dist,n+1,n+1,"pair:wanted_dist");
   memory->create(F1,n+1,n+1,"pair:F1");
   memory->create(F2,n+1,n+1,"pair:F2");
+  memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
   map = new int[n+1];
 
   chi = new double[n+1];
@@ -319,6 +334,11 @@ void PairReaxC::coeff( int nargs, char **args )
   //printf("\n~~~in coeff~~~");
   if (!allocated) allocate();
 
+  for(int i=0; i<atom->nlocal; i++){
+    int tag=atom->tag[i];
+    tag_to_i[tag]=i;
+  }
+
   if (nargs != 3 + atom->ntypes)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
@@ -393,17 +413,17 @@ void PairReaxC::coeff( int nargs, char **args )
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
 
   //O-C (3-1)
-  F1[3][1]=F1[1][3]=25;
+  F1[3][1]=F1[1][3]=50*1;
   F2[3][1]=F2[1][3]=0.5;
   wanted_dist[3][1]=wanted_dist[1][3]=1.95;
 
   //O-H (3-2)
-  F1[3][2]=F1[2][3]=125;
+  F1[3][2]=F1[2][3]=250*1;
   F2[3][2]=F2[2][3]=0.75;
   wanted_dist[3][2]=wanted_dist[2][3]=1.1;
 
   //N-C (4-1)
-  F1[4][1]=F1[1][4]=150;
+  F1[4][1]=F1[1][4]=300*1;
   F2[4][1]=F2[1][4]=0.75;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
 
@@ -596,10 +616,23 @@ void PairReaxC::compute(int eflag, int vflag)
 
   // forces
 //printf("\n1");
+  double added_e=0; //the energy of the BB potential
   Compute_Forces(system,control,data,workspace,&lists,out_control,mpi_data);
-  if(flag_bb==1)
-    compute_BB();
-    //printf("\n2");
+  if(flag_bb==1){
+    /*if(data->step%100 == 0){
+      printf("\n\nTIMESTEP=%d",data->step);
+      printf("\n----------->in compute before add: e_bond= %f", data->my_en.e_bond);
+    }*/
+    added_e=compute_BB();
+    //data->my_en.e_bond+=added_e; //?????????????????
+    eng_vdwl += added_e;
+    fprintf(energy_fp,"\n%f",added_e);
+
+    //printf("\n----------->added_e=%f", added_e);
+   /* if(data->step%100 == 0){
+      printf("\n-----------> in compute after add: e_bond= %f", data->my_en.e_bond);
+    }*/
+  }
   read_reax_forces(vflag);
   //printf("\nback to compute");
   //printf("\n3");
@@ -609,8 +642,10 @@ void PairReaxC::compute(int eflag, int vflag)
     num_hbonds[k] = system->my_atoms[k].num_hbonds;
   }
   
+
   // energies and pressure
   if (eflag_global) {
+
     evdwl += data->my_en.e_bond;
     evdwl += data->my_en.e_ov;
     evdwl += data->my_en.e_un;
@@ -623,11 +658,16 @@ void PairReaxC::compute(int eflag, int vflag)
     evdwl += data->my_en.e_con;
     evdwl += data->my_en.e_vdW;
 
+
     ecoul += data->my_en.e_ele;
     ecoul += data->my_en.e_pol;
 
-    // eng_vdwl += evdwl;
-    // eng_coul += ecoul;
+
+//****************//
+   // printf("\n before eng_vdwl=%f", eng_vdwl);
+    /*eng_vdwl += evdwl;
+     eng_coul += ecoul;*/
+   //  printf("\t after eng_vdwl=%f\n", eng_vdwl);
 
     // Store the different parts of the energy
     // in a list for output by compute pair command
@@ -651,6 +691,12 @@ void PairReaxC::compute(int eflag, int vflag)
   
   // Set internal timestep counter to that of LAMMPS
   data->step = update->ntimestep;
+
+
+/*if(data->step%100 == 0){
+      printf("\n-----------> in compute before Output_Results: e_bond= %f", data->my_en.e_bond);
+    }*/
+
 
   Output_Results( system, control, data, &lists, out_control, mpi_data );
 
@@ -856,7 +902,8 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
     else{
       flag_bb=0;
       count_bb_timesteps=0;
-      printf("\n\n**** finish %d timesteps ****\n\n", MAX_NUM_TIMESPACE); 
+      fprintf(energy_fp,"\nfinish");
+      printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESPACE, update->ntimestep); 
     }
   }
   //printf("\nadding the force");
@@ -895,33 +942,13 @@ void PairReaxC::add_bb_potential(){
 
 }
 
-
-/* ---------------------------------------------------------------------- */
-
-int PairReaxC::from_tag_to_i(tagint tag){
-  if(tag<=0)
-    return -1;
-  //printf("----> in from_tag_to_i function <----\n") ; 
-  //int len=sizeof(atom->tag)/sizeof(*atom->tag);
-  for(int i=0; i<nmax; i++){
-    if(int(atom->tag[i])==int(tag)){
-        //printf("the tag is: %d the i is: %d\n", tag, i);
-        //printf("----> out <----\n") ;
-        return i;
-    } 
-  }
-  
-//printf("no i for that shitti tag");
-  //printf("----> out no result with tag=%d<----\n", tag) ;
-  return -1;
-
-}
-
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::set_fourset(int **foursets, int num_foursets){
   //printf("\n~~~in set_fourset~~~");
-    
+  if(count_bb_timesteps>0)
+    return;
+  fprintf(energy_fp,"start");
   count_bb_timesteps=0;
   flag_bb=1;
   int i;
@@ -937,7 +964,7 @@ void PairReaxC::set_fourset(int **foursets, int num_foursets){
 }
 
 /* ---------------------------------------------------------------------- */
-void PairReaxC::compute_BB(){
+double PairReaxC::compute_BB(){
   //printf("\n~~~in compute_BB~~~");
   //printf("\natom->nlocal=%d",atom->nlocal);
   for (int i = 0; i < atom->nlocal; i++) {
@@ -945,16 +972,18 @@ void PairReaxC::compute_BB(){
       f_fourset[i][j] = 0;
     }
   }
+  double e=0; //the amount of the additional energy
 
   for(int k=0; k<num_fourset; k++){
-    compute_BB_pair(fourset[k][0], fourset[k][1]);
-    compute_BB_pair(fourset[k][0], fourset[k][3]);
-    compute_BB_pair(fourset[k][2], fourset[k][3]);
+    e+=compute_BB_pair(fourset[k][0], fourset[k][1]);
+    e+=compute_BB_pair(fourset[k][0], fourset[k][3]);
+    e+=compute_BB_pair(fourset[k][2], fourset[k][3]);
   }
  //printf("\n~~~out compute_BB~~~");
+ return e;
 }
 /* ---------------------------------------------------------------------- */
-void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
+double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     //printf("\n~~~in compute_BB_pair~~~");
     int i,j,itype, jtype;
     double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq, rij;
@@ -962,14 +991,14 @@ void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     double **f = atom->f;
     int *type = atom->type;
 
-    i=from_tag_to_i(i_tag);
+    i=tag_to_i[i_tag];
 
     xtmp = x[i][0];
     ytmp = x[i][1];
     ztmp = x[i][2];
     itype = type[i];
 
-    j=from_tag_to_i(j_tag);
+    j=tag_to_i[j_tag];
     jtype = type[j];
 
     delx = xtmp - x[j][0];
@@ -978,34 +1007,41 @@ void PairReaxC::compute_BB_pair(int i_tag, int j_tag){
       
     rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
     rij=sqrt(rsq);
+    
+    //FOR DEBUGGING
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
     //printf("\natomi_tag=%d, atomj_tag=%d, rsq=%f. rij=%f, r12=%f",i_tag,j_tag,rsq,rij, wanted_dist[itype][jtype]);
-
     //print the distance at the first 2 timesteps and at the last 2 timesteps
     if(count_bb_timesteps<2 || count_bb_timesteps>MAX_NUM_TIMESPACE-2){
       if( (itype==1 && jtype==4))
-        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==4 && jtype==1))
-        printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==3 && jtype==2))
-        printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==2 && jtype==3))
-        printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==3 && jtype==1))
-        printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==1 && jtype==3))
-        printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f", i_tag, j_tag, rij);
+        printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f\n", i_tag, j_tag, rij);
     }
+    
     fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
     
-
+    //calculate the F force vector for atom i
     f_fourset[i_tag-1][0] += (delx*fpair)/rij;
     f_fourset[i_tag-1][1] += (dely*fpair)/rij;
     f_fourset[i_tag-1][2] += (delz*fpair)/rij;
-            
+    //calculate the F force vector for atom j       
     f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
     f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
     f_fourset[j_tag-1][2] -= (delz*fpair)/rij;
+    
+    //calculate and return the E (energy)
+    double r=rij-wanted_dist[itype][jtype];
+    double e=F1[itype][jtype] * (1 - exp( -F2[itype][jtype] * r * r ));
+    return e;
     //printf("\n~~~out compute_BB_pair~~~");
 
 }
@@ -1023,9 +1059,12 @@ double PairReaxC::single_BB(int /*i*/, int /*j*/, int itype, int jtype, double r
     printf("\n\n**** r=0 OMG!!!! ****\n\n");
   double temp= -F2[itype][jtype] * r;
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
+  
+  //FOR DEBUGGING
   //printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
   //printf("\nr=%f, temp=%f, force=%f", r, temp, force);
   //printf("\n~~~out single_BB~~~\n\n");
+  
   return force;
 }
 
@@ -1065,6 +1104,8 @@ double PairReaxC::memory_usage()
   // From pair_reax_c
   bytes += 1.0 * system->N * sizeof(int);
   bytes += 1.0 * system->N * sizeof(double);
+
+  bytes += atom->nlocal*sizeof(int);//tag_to_i
 
   //for f_fourset
   bytes += 3.0 * atom->nlocal * sizeof(double);

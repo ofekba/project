@@ -68,11 +68,12 @@ class PairReaxC : public Pair {
   int num_fourset;
   int count_bb_timesteps;
   int flag_bb;
-  void compute_BB();
-  void compute_BB_pair(int, int);
+  int *tag_to_i;
+  double compute_BB();
+  double compute_BB_pair(int, int);
   double single_BB(int, int, int, int, double);
-  int from_tag_to_i(tagint);
   int MAX_NUM_TIMESPACE; //number of time steps the the potential works.
+  FILE *energy_fp; //file that document the added energy to the system
 
  protected:
   double cutmax;

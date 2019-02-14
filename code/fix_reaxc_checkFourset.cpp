@@ -82,20 +82,21 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
       }
     }
 
-
-
-
   if (atom->tag_consecutive() == 0)
     error->all(FLERR,"Atom IDs must be consecutive for fix reax/c bonds");
 
   neigh_list=NULL;
-
+  tag_to_i=NULL;
   numneigh = NULL;
-  local_tot = static_cast<int> (atom->natoms);
   fourset = NULL;
   num_fourset = 0;
 
   allocate();
+
+  for(int i=0; i<atom->nlocal; i++){
+    int tag=atom->tag[i];
+    tag_to_i[tag]=i;
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -165,16 +166,16 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
      printf("\n==================nmax num 2=%d\n", nmax);//************
     allocate();
   }*/
-  for (i = 0; i < local_tot; i++) {
+  for (i = 0; i < atom->nlocal; i++) {
     numneigh[i] = 0;
-    for (j = 0; j < local_tot; j++) {
+    for (j = 0; j < atom->nlocal; j++) {
       neigh_list[i][j]=-1;
     }
   }
-  //printf("\n****** 2 ******\n");
+ // printf("\n****** 2 ******\n");
   numbonds = 0;
   num_fourset=0;
-  for (i = 0; i < local_tot; i++) {
+  for (i = 0; i < 20; i++) {
     for (j = 0; j < 4; j++) {
       fourset[i][j] = 0;
     }
@@ -202,7 +203,7 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 
 void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
 {
-  //printf("\n=========in FindNbr=========\n");//************
+ // printf("\n=========in FindNbr=========\n");//************
   int nlocal_tot = static_cast<int> (atom->nlocal);
   if (atom->nmax > nmax) {
     nmax = atom->nmax;
@@ -257,35 +258,14 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
         printf("|\n\n");
     }
   }*/
-     // printf("\n=============finish FindNbr=========\n");
+    //  printf("\n=============finish FindNbr=========\n");
 }
-
-/* ---------------------------------------------------------------------- */
-
-//TODO-improve efficiency OR find builded method.
-
-
-int FixReaxCCheckFourset::from_tag_to_i(tagint tag){
-  if(tag<=0)
-    return -1;
-  for(int i=0; i<local_tot; i++){
-    if(int(atom->tag[i])==int(tag)){
-        return i;
-    } 
-  }
-  return -1;
-
-}
-
-
-
 
 /* ---------------------------------------------------------------------- */
 
 void FixReaxCCheckFourset::checkForFoursets(){
 
   int nlocal = atom->nlocal;
-  //int nlocal=local_tot;
   //printf("\n============in checkFourset===============\n");
   
   //mine
@@ -306,45 +286,45 @@ void FixReaxCCheckFourset::checkForFoursets(){
     if(a_type==FIRST_TYPE){
       a_numNbr = nint(numneigh[a_tag-1]);
       for (b = 0; b < a_numNbr; b++) {
-        if(success==1)
-          break;
+       /* if(success==1)
+          break;*/
         b_tag = b+1;
-        i=from_tag_to_i(b_tag);
+        i=tag_to_i[b_tag];
         if(i==-1)
           break;
         b_type = atom->type[i]; 
         if(b_type==SECOND_TYPE){
-          if( 1.5<neigh_list[a][b] && neigh_list[a][b]<8.0 ){
+          if( 1.3<neigh_list[a][b] && neigh_list[a][b]<8.0 ){
             b_numNbr=nint(numneigh[b_tag-1]); 
-           // printf("\nfirst cond OK\n");//**********
+            //printf("\nfirst cond OK\n");//**********
 
             for (c = 0; c < b_numNbr; c++) {
-              if(success==1)
-                break;
+              /*if(success==1)
+                break;*/
               c_tag = c+1; 
-              i=from_tag_to_i(c_tag);
+              i=tag_to_i[c_tag];
               if(i==-1)
                 break;
               c_type = atom->type[i]; 
               if(c_type==THIRD_TYPE){
-                if( 0.9<neigh_list[b][c] && neigh_list[b][c]<1.2 ){
-                  //printf("\nsecond cond OK\n");//**********
+                if( 0.8<neigh_list[b][c] && neigh_list[b][c]<1.3 ){
+                  printf("\nsecond cond OK\n");//**********
 
                   c_numNbr=nint(numneigh[c_tag-1]);
                   for(d = 0; d < c_numNbr; d++) {
-                    if(success==1)
-                      break;
+                    /*if(success==1)
+                      break;*/
                     d_tag = d+1;
-                    i=from_tag_to_i(d_tag);
+                    i=tag_to_i[d_tag];
                     if(i==-1)
                       break;
                     d_type = atom->type[i];
                     
                     if(d_type==FORTH_TYPE){
                       if( 3.0<neigh_list[c][d] && neigh_list[c][d]<8.0 ){
-                        //printf("\nthird cond OK\n");//**********
+                        printf("\nthird cond OK\n");//**********
                         
-                        if( 1.3<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<1.6 ) {
+                        if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
                           //printf("\nfourth cond OK\n");//**********
                           
                           num_fourset++;
@@ -352,9 +332,9 @@ void FixReaxCCheckFourset::checkForFoursets(){
                           fourset[num_fourset-1][1]=b_tag; //H
                           fourset[num_fourset-1][2]=c_tag; //N
                           fourset[num_fourset-1][3]=d_tag; //C
-                          printf("**** success! ****\n") ; 
+                          //printf("**** success! ****\n") ; 
                           success=1;
-                          break;
+                          //break;
                         }
                       }
                     } 
@@ -369,7 +349,13 @@ void FixReaxCCheckFourset::checkForFoursets(){
   }
  // printf("finish over the neigh list\n");
   if(num_fourset!=0){
-    reaxc->set_fourset(fourset, num_fourset);
+    //reaxc->set_fourset(fourset, num_fourset);
+    for(int i=0; i<num_fourset;i++){
+      printf("fourset #%d is: ", num_fourset);
+      for(int j=0; j<4;j++)
+        printf("%d ",fourset[i][j]);
+      printf("\n");
+    }
   }
   //printf("\n\n==========finish checkFourset func=============\n");
 }
@@ -422,6 +408,8 @@ void FixReaxCCheckFourset::destroy()
   memory->destroy(neigh_list);
   memory->destroy(numneigh);
   memory->destroy(fourset);
+  memory->destroy(tag_to_i);
+  
 
 }
 
@@ -429,9 +417,11 @@ void FixReaxCCheckFourset::destroy()
 
 void FixReaxCCheckFourset::allocate()
 {
-  memory->create(fourset,nmax,4,"reax/c/checkFourset:fourset");//***************
+  memory->create(fourset,20,4,"reax/c/checkFourset:fourset");//***************
   memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
-  memory->create(numneigh,nmax,"reax/c/checkFourset:numneigh");
+  memory->create(numneigh,atom->nlocal,"reax/c/checkFourset:numneigh");
+  memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
+  
 }
 
 /* ---------------------------------------------------------------------- */
@@ -439,10 +429,10 @@ void FixReaxCCheckFourset::allocate()
 double FixReaxCCheckFourset::memory_usage()
 {
   double bytes;
-  nmax=local_tot;
   //bytes = 3.0*nmax*sizeof(double);//??
-  bytes = nmax*sizeof(int);//numneigh
-  bytes += 1.0*nmax*4*sizeof(int);//fourset
+  bytes = atom->nlocal*sizeof(int);//numneigh
+  bytes += atom->nlocal*sizeof(int);//tag_to_i
+  bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
   bytes += 1.0*atom->nlocal*atom->nlocal*sizeof(double);//neigh_list
 
   return bytes;
