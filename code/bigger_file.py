@@ -14,7 +14,7 @@ neigh_tag=0
 neigh_dist=0
 
 neverty_fix_check=1
-total_timesteps=7000
+total_timesteps=4100
 
 size=int(total_timesteps/neverty_fix_check) + 1
 
@@ -61,16 +61,14 @@ typedict =	{
 axis_y=[ [], [], [], [], []]
 for j in range(timeStep_index+1):
 	axis_y[0].append(arr[j][91][95]) #C-O dist
-	axis_y[1].append(arr[j][95][27]) #O-H dist
-	axis_y[2].append(arr[j][27][7]) #N-H dist
+	axis_y[1].append(arr[j][95][28]) #O-H dist
+	axis_y[2].append(arr[j][28][7]) #N-H dist
 	axis_y[3].append(arr[j][7][91]) #N-C dist
-	axis_y[4].append(arr[j][7][90]) #N-C91 dist
 
-plt.plot(axis_x[:int(5500/neverty_fix_check)],axis_y[2][:int(5500/neverty_fix_check)], label="N-H")
-plt.plot(axis_x[:int(5500/neverty_fix_check)],axis_y[1][:int(5500/neverty_fix_check)], label="H-O")
-plt.plot(axis_x[:int(5500/neverty_fix_check)],axis_y[0][:int(5500/neverty_fix_check)], label="C-O")
-plt.plot(axis_x[:int(5500/neverty_fix_check)],axis_y[3][:int(5500/neverty_fix_check)], label="N-C")
-plt.plot(axis_x[:int(5500/neverty_fix_check)],axis_y[4][:int(5500/neverty_fix_check)], label="N-C91")
+plt.plot(axis_x,axis_y[2], label="N-H")
+plt.plot(axis_x,axis_y[1], label="H-O")
+plt.plot(axis_x,axis_y[0], label="C-O")
+plt.plot(axis_x,axis_y[3], label="N-C")
 
 
 
@@ -78,5 +76,5 @@ plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 plt.xlabel("timeStep")
 plt.ylabel("distance")
 plt.title("Distance Between Atoms As A Function Of Time")
-plt.show()		
-		
+plt.show()
+	

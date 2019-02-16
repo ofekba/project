@@ -1032,6 +1032,10 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
         printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==1 && jtype==3))
         printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f\n", i_tag, j_tag, rij);
+      else if( (itype==2 && jtype==4))
+        printf("\nThe distance between H (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
+      else if( (itype==4 && jtype==2))
+        printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
     }
     
     fpair=single_BB(i_tag, j_tag, itype, jtype, rij);

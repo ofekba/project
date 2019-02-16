@@ -196,7 +196,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     //printf("\n==================nmax is=%d\n", nmax);//************
   }
   //printf("\n==================nlocal_tot=%d \n", nlocal_tot);
-  
+  /*
   int i, j, pj;
   int tag_i, tag_j;
   far_neighbor_data *nbr_pj;
@@ -232,11 +232,28 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
          }
       }
     }
-  }
+  }*/
 
   for(int i=0; i<atom->nlocal; i++){
     int tag=atom->tag[i];
     tag_to_i[tag-1]=i;
+  }
+
+  double x0, x1, x2;
+  double del0, del1, del2;
+  double dist;
+  for( int i = 0; i < atom->nlocal; ++i ){
+    x0=atom->x[i][0];
+    x1=atom->x[i][1];
+    x2=atom->x[i][2];
+    for( int j = 0; j < atom->nlocal; ++j ){
+      del0=x0-atom->x[j][0];
+      del1=x1-atom->x[j][1];
+      del2=x2-atom->x[j][2];
+      dist=del0*del0+del1*del1+del2*del2;
+      dist=sqrt(dist);
+      neigh_list[atom->tag[i]-1][atom->tag[j]-1]=dist;
+    }
   }
   
 
@@ -320,9 +337,10 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
     }
     printf("|\n\n");
-    i=95;
+    int i=95;
     printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
-    for(j=0; j<nlocal_tot; j++){
+    printf("|id=28, distance=%f", neigh_list[i][27]);
+    for(int j=0; j<nlocal_tot; j++){
       if(neigh_list[i][j]!=-1)
         printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
     }
@@ -399,7 +417,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
                             fourset[num_fourset-1][1]=b_tag; //H
                             fourset[num_fourset-1][2]=c_tag; //N
                             fourset[num_fourset-1][3]=d_tag; //C
-                            printf("**** success! ****\n") ; 
+                            //printf("**** success! ****\n") ; 
                           }
                         }
                       }
@@ -417,14 +435,18 @@ void FixReaxCCheckFourset::checkForFoursets(){
   if(num_fourset!=0){
     //reaxc->set_fourset(fourset, num_fourset);
     reaxc->set_fourset(fourset, 1);
-    /*for(int i=0; i<num_fourset;i++){
-      printf("fourset #%d is: ", i);
-      for(int j=0; j<4;j++)
-        printf("%d ",fourset[i][j]);
+    //print the foursets
+    if(update->ntimestep%1000==0){
+      for(int i=0; i<num_fourset;i++){
+        printf("fourset #%d is: ", i);
+        for(int j=0; j<4;j++)
+          printf("%d ",fourset[i][j]);
+        printf("\n");
+      }
       printf("\n");
     }
-    printf("\n");*/
   }
+
   //printf("\n\n==========finish checkFourset func=============\n");
 }
 
