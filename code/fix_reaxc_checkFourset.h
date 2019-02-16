@@ -46,7 +46,7 @@ class FixReaxCCheckFourset : public Fix {
   void allocate();
   void destroy();
   virtual void Output_ReaxC_Bonds(bigint);
-  void FindNbr(struct _reax_list*, int &);
+  void FindNbr(struct _reax_list*);
   int nint(const double &);
   virtual double memory_usage();
   void checkForFoursets(); //*****my func*****

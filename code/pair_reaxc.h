@@ -72,7 +72,7 @@ class PairReaxC : public Pair {
   double compute_BB();
   double compute_BB_pair(int, int);
   double single_BB(int, int, int, int, double);
-  int MAX_NUM_TIMESPACE; //number of time steps the the potential works.
+  int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
   FILE *energy_fp; //file that document the added energy to the system
 
  protected:

@@ -89,14 +89,8 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   tag_to_i=NULL;
   numneigh = NULL;
   fourset = NULL;
-  num_fourset = 0;
 
   allocate();
-
-  for(int i=0; i<atom->nlocal; i++){
-    int tag=atom->tag[i];
-    tag_to_i[tag]=i;
-  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -157,7 +151,6 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 {
   //printf("\n****in Output_ReaxC_Bonds*****\n");
   int i, j;
-  int numbonds;
 
   //printf("\n****** 1 ******\n");
   /*if (atom->nmax > nmax) {
@@ -173,15 +166,8 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
     }
   }
  // printf("\n****** 2 ******\n");
-  numbonds = 0;
-  num_fourset=0;
-  for (i = 0; i < 20; i++) {
-    for (j = 0; j < 4; j++) {
-      fourset[i][j] = 0;
-    }
-  }
-//printf("\n****** 3 ******\n");
-  FindNbr(lists, numbonds);
+
+  FindNbr(lists);
   //printf("\n****** 4 ******\n");
   checkForFoursets();
 
@@ -201,7 +187,7 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 
 
 
-void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
+void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
 {
  // printf("\n=========in FindNbr=========\n");//************
   int nlocal_tot = static_cast<int> (atom->nlocal);
@@ -248,6 +234,12 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
     }
   }
 
+  for(int i=0; i<atom->nlocal; i++){
+    int tag=atom->tag[i];
+    tag_to_i[tag-1]=i;
+  }
+  
+
 //print the neighbors list
   /*if(update->ntimestep<99){
     for(i=0; i<nlocal_tot; i++){
@@ -259,19 +251,107 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/, int &numbonds)
     }
   }*/
     //  printf("\n=============finish FindNbr=========\n");
+  if(update->ntimestep%3000==0){
+    /*//*****************
+    i=52;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=48;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+  //*****************
+    i=53;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=51;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+  //*****************
+    i=95;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=91;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    //*****************
+      i=96;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=94;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    //******************/
+/*
+    i=7;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      if(neigh_list[i][j]!=-1)
+        printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=91;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      if(neigh_list[i][j]!=-1)
+        printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");
+    i=95;
+    printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+    for(j=0; j<nlocal_tot; j++){
+      if(neigh_list[i][j]!=-1)
+        printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+    }
+    printf("|\n\n");*/
+
+
+  }
+
 }
 
 /* ---------------------------------------------------------------------- */
 
 void FixReaxCCheckFourset::checkForFoursets(){
-
-  int nlocal = atom->nlocal;
-  //printf("\n============in checkFourset===============\n");
   
+  //printf("\n============in checkFourset===============\n");
+  int nlocal = atom->nlocal;
+
+  //reset the fourset array
+  num_fourset=0;
+  for (int i = 0; i < 20; i++) {
+    for (int j = 0; j < 4; j++) {
+      fourset[i][j] = 0;
+    }
+  }
+
   //mine
   tagint a_tag, b_tag, c_tag, d_tag;
   int a_type, b_type, c_type, d_type;
-  int a, b,c,d, a_numNbr, b_numNbr, c_numNbr, d_numNbr;
+  int a, b, c, d;
   int i; //the index of an atom in the atom->tag array
 
   //const
@@ -279,62 +359,48 @@ void FixReaxCCheckFourset::checkForFoursets(){
   int const SECOND_TYPE=2; // H TYPE  NUM
   int const THIRD_TYPE=4;// N TYPE  NUM
   int const FORTH_TYPE=1;// C TYPE  NUM
+
   for (a = 0; a < nlocal; a++) {
     a_tag = atom->tag[a];
     a_type = atom->type[a];
-    int success=0;
     if(a_type==FIRST_TYPE){
-      a_numNbr = nint(numneigh[a_tag-1]);
-      for (b = 0; b < a_numNbr; b++) {
-       /* if(success==1)
-          break;*/
+      for (b = 0; b < nlocal; b++) {
         b_tag = b+1;
-        i=tag_to_i[b_tag];
+        i=tag_to_i[b_tag-1];
         if(i==-1)
           break;
         b_type = atom->type[i]; 
         if(b_type==SECOND_TYPE){
           if( 1.3<neigh_list[a][b] && neigh_list[a][b]<8.0 ){
-            b_numNbr=nint(numneigh[b_tag-1]); 
             //printf("\nfirst cond OK\n");//**********
-
-            for (c = 0; c < b_numNbr; c++) {
-              /*if(success==1)
-                break;*/
+            for (c = 0; c < nlocal; c++) {
               c_tag = c+1; 
-              i=tag_to_i[c_tag];
+              i=tag_to_i[c_tag-1];
               if(i==-1)
                 break;
               c_type = atom->type[i]; 
               if(c_type==THIRD_TYPE){
                 if( 0.8<neigh_list[b][c] && neigh_list[b][c]<1.3 ){
-                  printf("\nsecond cond OK\n");//**********
-
-                  c_numNbr=nint(numneigh[c_tag-1]);
-                  for(d = 0; d < c_numNbr; d++) {
-                    /*if(success==1)
-                      break;*/
+                  //printf("\nsecond cond OK\n");//**********
+                  for(d = 0; d < nlocal; d++) {
                     d_tag = d+1;
-                    i=tag_to_i[d_tag];
+                    i=tag_to_i[d_tag-1];
                     if(i==-1)
                       break;
                     d_type = atom->type[i];
-                    
                     if(d_type==FORTH_TYPE){
                       if( 3.0<neigh_list[c][d] && neigh_list[c][d]<8.0 ){
-                        printf("\nthird cond OK\n");//**********
-                        
+                       // printf("\nthird cond OK\n");//**********
                         if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
                           //printf("\nfourth cond OK\n");//**********
-                          
-                          num_fourset++;
-                          fourset[num_fourset-1][0]=a_tag; //O
-                          fourset[num_fourset-1][1]=b_tag; //H
-                          fourset[num_fourset-1][2]=c_tag; //N
-                          fourset[num_fourset-1][3]=d_tag; //C
-                          //printf("**** success! ****\n") ; 
-                          success=1;
-                          //break;
+                          if(a_tag==d_tag+4 || a_tag==d_tag+2){
+                            num_fourset++;
+                            fourset[num_fourset-1][0]=a_tag; //O
+                            fourset[num_fourset-1][1]=b_tag; //H
+                            fourset[num_fourset-1][2]=c_tag; //N
+                            fourset[num_fourset-1][3]=d_tag; //C
+                            printf("**** success! ****\n") ; 
+                          }
                         }
                       }
                     } 
@@ -350,12 +416,14 @@ void FixReaxCCheckFourset::checkForFoursets(){
  // printf("finish over the neigh list\n");
   if(num_fourset!=0){
     //reaxc->set_fourset(fourset, num_fourset);
-    for(int i=0; i<num_fourset;i++){
-      printf("fourset #%d is: ", num_fourset);
+    reaxc->set_fourset(fourset, 1);
+    /*for(int i=0; i<num_fourset;i++){
+      printf("fourset #%d is: ", i);
       for(int j=0; j<4;j++)
         printf("%d ",fourset[i][j]);
       printf("\n");
     }
+    printf("\n");*/
   }
   //printf("\n\n==========finish checkFourset func=============\n");
 }
@@ -369,23 +437,25 @@ void FixReaxCCheckFourset::followDistFunc()
   double dist;
   fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
   for( int i = 0; i < atom->nlocal; ++i ){
-    fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
-    x0=atom->x[i][0];
-    x1=atom->x[i][1];
-    x2=atom->x[i][2];
-    for( int j = 0; j < atom->nlocal; ++j ){
-      
-        del0=x0-atom->x[j][0];
-        del1=x1-atom->x[j][1];
-        del2=x2-atom->x[j][2];
-        dist=del0*del0+del1*del1+del2*del2;
-        dist=sqrt(dist);
-        fprintf(fp,"%d %f ",atom->tag[j], dist);
-        /*if(j==i && update->ntimestep==50){
-          printf(tag i=%d, )
-        }*/
+    if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96){
+      fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
+      x0=atom->x[i][0];
+      x1=atom->x[i][1];
+      x2=atom->x[i][2];
+      for( int j = 0; j < atom->nlocal; ++j ){
+        
+          del0=x0-atom->x[j][0];
+          del1=x1-atom->x[j][1];
+          del2=x2-atom->x[j][2];
+          dist=del0*del0+del1*del1+del2*del2;
+          dist=sqrt(dist);
+          fprintf(fp,"%d %f ",atom->tag[j], dist);
+          /*if(j==i && update->ntimestep==50){
+            printf(tag i=%d, )
+          }*/
+      }
+      fprintf(fp,"\n");
     }
-    fprintf(fp,"\n");
   }
   fprintf(fp,"#\n");
 }

@@ -125,7 +125,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
-  MAX_NUM_TIMESPACE=2000;
+  MAX_NUM_TIMESTEPS=2000;
   tag_to_i=NULL;
 
   nextra = 14;
@@ -334,11 +334,6 @@ void PairReaxC::coeff( int nargs, char **args )
   //printf("\n~~~in coeff~~~");
   if (!allocated) allocate();
 
-  for(int i=0; i<atom->nlocal; i++){
-    int tag=atom->tag[i];
-    tag_to_i[tag]=i;
-  }
-
   if (nargs != 3 + atom->ntypes)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
@@ -413,19 +408,24 @@ void PairReaxC::coeff( int nargs, char **args )
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
 
   //O-C (3-1)
-  F1[3][1]=F1[1][3]=50*1;
+  F1[3][1]=F1[1][3]=250*1;
   F2[3][1]=F2[1][3]=0.5;
-  wanted_dist[3][1]=wanted_dist[1][3]=1.95;
+  wanted_dist[3][1]=wanted_dist[1][3]=3.0;
 
   //O-H (3-2)
-  F1[3][2]=F1[2][3]=250*1;
-  F2[3][2]=F2[2][3]=0.75;
-  wanted_dist[3][2]=wanted_dist[2][3]=1.1;
+  F1[3][2]=F1[2][3]=500*1;
+  F2[3][2]=F2[2][3]=1.0;
+  wanted_dist[3][2]=wanted_dist[2][3]=1.0;
 
   //N-C (4-1)
-  F1[4][1]=F1[1][4]=300*1;
-  F2[4][1]=F2[1][4]=0.75;
+  F1[4][1]=F1[1][4]=500*1;
+  F2[4][1]=F2[1][4]=1.0;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
+
+  //N-H (4-2)
+  F1[4][2]=F1[2][4]=250*1;
+  F2[4][2]=F2[2][4]=0.25;
+  wanted_dist[4][2]=wanted_dist[2][4]=2.0;
 
   //printf("\n~~~out coeff~~~");
 
@@ -614,8 +614,13 @@ void PairReaxC::compute(int eflag, int vflag)
     data->timing.nbrs = t_end - t_start;
   }
 
+  //update the tag_to_i array
+for(int i=0; i<atom->nlocal; i++){
+    int tag=atom->tag[i];
+    tag_to_i[tag-1]=i;
+  }
+
   // forces
-//printf("\n1");
   double added_e=0; //the energy of the BB potential
   Compute_Forces(system,control,data,workspace,&lists,out_control,mpi_data);
   if(flag_bb==1){
@@ -894,7 +899,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
   //printf("\n~~~in read_reax_forces~~~");
   if(flag_bb==1){
     //printf("\nflagBB is on\n");
-    if(count_bb_timesteps<MAX_NUM_TIMESPACE){
+    if(count_bb_timesteps<MAX_NUM_TIMESTEPS){
       //printf("\ncount_bb_timesteps=%d",count_bb_timesteps);
         count_bb_timesteps++;
         add_bb_potential();
@@ -903,7 +908,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
       flag_bb=0;
       count_bb_timesteps=0;
       fprintf(energy_fp,"\nfinish");
-      printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESPACE, update->ntimestep); 
+      printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }
   //printf("\nadding the force");
@@ -949,6 +954,7 @@ void PairReaxC::set_fourset(int **foursets, int num_foursets){
   if(count_bb_timesteps>0)
     return;
   fprintf(energy_fp,"start");
+  printf("\nstart operate the potential");
   count_bb_timesteps=0;
   flag_bb=1;
   int i;
@@ -965,7 +971,7 @@ void PairReaxC::set_fourset(int **foursets, int num_foursets){
 
 /* ---------------------------------------------------------------------- */
 double PairReaxC::compute_BB(){
-  //printf("\n~~~in compute_BB~~~");
+ // printf("\n~~~in compute_BB~~~");
   //printf("\natom->nlocal=%d",atom->nlocal);
   for (int i = 0; i < atom->nlocal; i++) {
     for (int j = 0; j < 3; j++) {
@@ -975,9 +981,10 @@ double PairReaxC::compute_BB(){
   double e=0; //the amount of the additional energy
 
   for(int k=0; k<num_fourset; k++){
-    e+=compute_BB_pair(fourset[k][0], fourset[k][1]);
-    e+=compute_BB_pair(fourset[k][0], fourset[k][3]);
-    e+=compute_BB_pair(fourset[k][2], fourset[k][3]);
+    e+=compute_BB_pair(fourset[k][0], fourset[k][1]); //O-H
+    e+=compute_BB_pair(fourset[k][0], fourset[k][3]); //O-C
+    e+=compute_BB_pair(fourset[k][2], fourset[k][3]); //N-C
+    e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
   }
  //printf("\n~~~out compute_BB~~~");
  return e;
@@ -991,14 +998,14 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     double **f = atom->f;
     int *type = atom->type;
 
-    i=tag_to_i[i_tag];
+    i=tag_to_i[i_tag-1];
 
     xtmp = x[i][0];
     ytmp = x[i][1];
     ztmp = x[i][2];
     itype = type[i];
 
-    j=tag_to_i[j_tag];
+    j=tag_to_i[j_tag-1];
     jtype = type[j];
 
     delx = xtmp - x[j][0];
@@ -1010,9 +1017,9 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     
     //FOR DEBUGGING
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
-    //printf("\natomi_tag=%d, atomj_tag=%d, rsq=%f. rij=%f, r12=%f",i_tag,j_tag,rsq,rij, wanted_dist[itype][jtype]);
+    //printf("\natom i: tag=%d type=%d, atom j: tag=%d type=%d, rsq=%f rij=%f, r12=%f",i_tag, itype, j_tag, jtype, rsq,rij, wanted_dist[itype][jtype]);
     //print the distance at the first 2 timesteps and at the last 2 timesteps
-    if(count_bb_timesteps<2 || count_bb_timesteps>MAX_NUM_TIMESPACE-2){
+    if(count_bb_timesteps<2 || count_bb_timesteps>MAX_NUM_TIMESTEPS-2){
       if( (itype==1 && jtype==4))
         printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==4 && jtype==1))
@@ -1055,8 +1062,6 @@ double PairReaxC::single_BB(int /*i*/, int /*j*/, int itype, int jtype, double r
   //printf("\n~~~in single_BB~~~");
   double force;
   double r= rsq-wanted_dist[itype][jtype];
-  if(r==0)
-    printf("\n\n**** r=0 OMG!!!! ****\n\n");
   double temp= -F2[itype][jtype] * r;
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
   
