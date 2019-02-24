@@ -91,6 +91,9 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   fourset = NULL;
 
   allocate();
+
+fprintf(fp,"# totalTimesteps " BIGINT_FORMAT " \n",6000);
+
 }
 
 /* ---------------------------------------------------------------------- */
@@ -436,7 +439,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
     //reaxc->set_fourset(fourset, num_fourset);
     reaxc->set_fourset(fourset, 1);
     //print the foursets
-    if(update->ntimestep%1000==0){
+    /*if(update->ntimestep<=1){
       for(int i=0; i<num_fourset;i++){
         printf("fourset #%d is: ", i);
         for(int j=0; j<4;j++)
@@ -444,7 +447,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
         printf("\n");
       }
       printf("\n");
-    }
+    }*/
   }
 
   //printf("\n\n==========finish checkFourset func=============\n");
@@ -459,7 +462,7 @@ void FixReaxCCheckFourset::followDistFunc()
   double dist;
   fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
   for( int i = 0; i < atom->nlocal; ++i ){
-    if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96){
+    if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96 || atom->tag[i]==52 || atom->tag[i]==29|| atom->tag[i]==9){
       fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
       x0=atom->x[i][0];
       x1=atom->x[i][1];

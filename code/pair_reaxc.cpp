@@ -408,22 +408,22 @@ void PairReaxC::coeff( int nargs, char **args )
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
 
   //O-C (3-1)
-  F1[3][1]=F1[1][3]=250*1;
+  F1[3][1]=F1[1][3]=250;
   F2[3][1]=F2[1][3]=0.5;
   wanted_dist[3][1]=wanted_dist[1][3]=3.0;
 
   //O-H (3-2)
-  F1[3][2]=F1[2][3]=500*1;
+  F1[3][2]=F1[2][3]=500;
   F2[3][2]=F2[2][3]=1.0;
   wanted_dist[3][2]=wanted_dist[2][3]=1.0;
 
   //N-C (4-1)
-  F1[4][1]=F1[1][4]=500*1;
+  F1[4][1]=F1[1][4]=500;
   F2[4][1]=F2[1][4]=1.0;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
 
   //N-H (4-2)
-  F1[4][2]=F1[2][4]=250*1;
+  F1[4][2]=F1[2][4]=250;
   F2[4][2]=F2[2][4]=0.25;
   wanted_dist[4][2]=wanted_dist[2][4]=2.0;
 
@@ -631,13 +631,13 @@ for(int i=0; i<atom->nlocal; i++){
     added_e=compute_BB();
     //data->my_en.e_bond+=added_e; //?????????????????
     eng_vdwl += added_e;
-    fprintf(energy_fp,"\n%f",added_e);
 
     //printf("\n----------->added_e=%f", added_e);
    /* if(data->step%100 == 0){
       printf("\n-----------> in compute after add: e_bond= %f", data->my_en.e_bond);
     }*/
   }
+  fprintf(energy_fp,"\n%f",added_e);
   read_reax_forces(vflag);
   //printf("\nback to compute");
   //printf("\n3");
@@ -953,7 +953,7 @@ void PairReaxC::set_fourset(int **foursets, int num_foursets){
   //printf("\n~~~in set_fourset~~~");
   if(count_bb_timesteps>0)
     return;
-  fprintf(energy_fp,"start");
+  fprintf(energy_fp,"\nstart");
   printf("\nstart operate the potential");
   count_bb_timesteps=0;
   flag_bb=1;
