@@ -63,7 +63,7 @@ class PairReaxC : public Pair {
   double **f_fourset;
   double **F1,**F2, **wanted_dist;
   void add_bb_potential();
-  void set_fourset(int**, int);
+  int set_fourset(int**, int);
   int **fourset;
   int num_fourset;
   int count_bb_timesteps;

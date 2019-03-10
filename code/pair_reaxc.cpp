@@ -125,7 +125,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
-  MAX_NUM_TIMESTEPS=2000;
+  MAX_NUM_TIMESTEPS=6500;
   tag_to_i=NULL;
 
   nextra = 14;
@@ -406,7 +406,7 @@ void PairReaxC::coeff( int nargs, char **args )
     }
   }
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
-
+//*4
   //O-C (3-1)
   F1[3][1]=F1[1][3]=250;
   F2[3][1]=F2[1][3]=0.5;
@@ -948,11 +948,17 @@ void PairReaxC::add_bb_potential(){
 }
 
 /* ---------------------------------------------------------------------- */
-
-void PairReaxC::set_fourset(int **foursets, int num_foursets){
-  //printf("\n~~~in set_fourset~~~");
+/*returns 1 if apply the extra potential on the foursets. else, 0*/
+int PairReaxC::set_fourset(int **foursets, int num_foursets){
+  // printf("\n~~~in set_fourset~~~\n");
   if(count_bb_timesteps>0)
-    return;
+    return 0;
+  if(update->ntimestep<1000)
+    return 0;
+  printf("\n~~~in set_fourset~~~\n");
+  for(int i=0; i<num_foursets; i++){
+    printf("fourset #%d: %d %d %d %d\n",i,foursets[i][0],foursets[i][1],foursets[i][2],foursets[i][3]);
+  }
   fprintf(energy_fp,"\nstart");
   printf("\nstart operate the potential");
   count_bb_timesteps=0;
@@ -967,6 +973,7 @@ void PairReaxC::set_fourset(int **foursets, int num_foursets){
     for(int j=0; j<4; j++)
       fourset[i][j]=0;
   //printf("\n~~~out set_fourset~~~");
+  return 1;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1019,7 +1026,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
     //printf("\natom i: tag=%d type=%d, atom j: tag=%d type=%d, rsq=%f rij=%f, r12=%f",i_tag, itype, j_tag, jtype, rsq,rij, wanted_dist[itype][jtype]);
     //print the distance at the first 2 timesteps and at the last 2 timesteps
-    if(count_bb_timesteps<2 || count_bb_timesteps>MAX_NUM_TIMESTEPS-2){
+    if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 || count_bb_timesteps%1000==0){
       if( (itype==1 && jtype==4))
         printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==4 && jtype==1))
@@ -1061,7 +1068,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
 //1. tag, type of atom i and tag, type of atom j
 //2. the R(i,j)=the distance between them
 //returns the calculated force.
-double PairReaxC::single_BB(int /*i*/, int /*j*/, int itype, int jtype, double rsq)
+double PairReaxC::single_BB(int i, int j, int itype, int jtype, double rsq)
 {
   //printf("\n~~~in single_BB~~~");
   double force;
@@ -1070,8 +1077,11 @@ double PairReaxC::single_BB(int /*i*/, int /*j*/, int itype, int jtype, double r
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
   
   //FOR DEBUGGING
-  //printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
-  //printf("\nr=%f, temp=%f, force=%f", r, temp, force);
+  if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+    printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
+    printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
+    printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
+  }
   //printf("\n~~~out single_BB~~~\n\n");
   
   return force;
