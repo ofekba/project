@@ -417,13 +417,13 @@ void FixReaxCCheckFourset::checkForFoursets(){
                         if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
                           //printf("\nfourth cond OK\n");//**********
                           if(a_tag==d_tag+4 || a_tag==d_tag+2){
-                            if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn && c_tag==8){
-                              n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
-                              fourset[0][0]=a_tag; //O
-                              fourset[0][1]=b_tag; //H
-                              fourset[0][2]=c_tag; //N
-                              fourset[0][3]=d_tag; //C
-                            }
+                              if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn && c_tag==8){
+                                  n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
+                                  fourset[0][0]=a_tag; //O
+                                  fourset[0][1]=b_tag; //H
+                                  fourset[0][2]=c_tag; //N
+                                  fourset[0][3]=d_tag; //C
+                              }
                             if(neigh_list[a][b]+neigh_list[c][d]<n_9_min_oh_cn && c_tag==9){
                               n_9_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
                               fourset[1][0]=a_tag; //O
@@ -575,7 +575,6 @@ void FixReaxCCheckFourset::allocate()
   memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
   memory->create(numneigh,atom->nlocal,"reax/c/checkFourset:numneigh");
   memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
-  
 }
 
 /* ---------------------------------------------------------------------- */

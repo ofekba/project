@@ -408,22 +408,22 @@ void PairReaxC::coeff( int nargs, char **args )
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
 //*4
   //O-C (3-1)
-  F1[3][1]=F1[1][3]=250;
+  F1[3][1]=F1[1][3]=250*0.5;
   F2[3][1]=F2[1][3]=0.5;
   wanted_dist[3][1]=wanted_dist[1][3]=3.0;
 
   //O-H (3-2)
-  F1[3][2]=F1[2][3]=500;
+  F1[3][2]=F1[2][3]=500*0.5;
   F2[3][2]=F2[2][3]=1.0;
   wanted_dist[3][2]=wanted_dist[2][3]=1.0;
 
   //N-C (4-1)
-  F1[4][1]=F1[1][4]=500;
+  F1[4][1]=F1[1][4]=500*0.5;
   F2[4][1]=F2[1][4]=1.0;
   wanted_dist[4][1]=wanted_dist[1][4]=1.5;
 
   //N-H (4-2)
-  F1[4][2]=F1[2][4]=250;
+  F1[4][2]=F1[2][4]=250*0.5;
   F2[4][2]=F2[2][4]=0.25;
   wanted_dist[4][2]=wanted_dist[2][4]=2.0;
 
@@ -954,6 +954,8 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
   if(count_bb_timesteps>0)
     return 0;
   if(update->ntimestep<1000)
+    return 0;
+  if(update->laststep-update->ntimestep<1500)
     return 0;
   printf("\n~~~in set_fourset~~~\n");
   for(int i=0; i<num_foursets; i++){

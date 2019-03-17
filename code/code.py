@@ -113,12 +113,9 @@ def extraE_graph():
 	#print(text_list)
 	y=[]
 	for e in text_list:
-		if e == "finish":
-			y.append(0.0)
-		elif e == "start":
-			continue;
-		else:
-			y.append(float(e))
+		if e == "finish": y.append(0.0)
+		elif e == "start": continue
+		else: y.append(float(e))
 
 	#x=list(range(len(y)))
 	#axis_x=list(range(1, len(y)))
