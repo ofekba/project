@@ -20,6 +20,10 @@ code.py file reads the created dist file and display Graph of the distance betwe
 to run this file:
 >> python3 code.py
 
+##### conv_xyz_to_dat.py:
+To convert XYZ file into DAT file that lammps support as an input file, run this python code.
+while running the code, you will be asked to type the file name, the box borders, and the atom's mases.
+
 #### how to run it?
 1. Download lammps source code from [here](https://github.com/lammps/lammps.git)
 2. Copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
