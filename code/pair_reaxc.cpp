@@ -125,7 +125,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
-  MAX_NUM_TIMESTEPS=6500;
+  MAX_NUM_TIMESTEPS=6500; //DEFAULT VALUE
   tag_to_i=NULL;
 
   nextra = 14;
@@ -143,6 +143,8 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
     snprintf(str,128,"Cannot open fix reax/c/bonds file energy.reax");
     error->one(FLERR,str);
   }
+
+  
 
 
 
@@ -188,6 +190,7 @@ PairReaxC::~PairReaxC()
   memory->destroy( F1 );
   memory->destroy( F2 );
   fclose(energy_fp);
+  fclose(parameters_fp);
   memory->destroy(tag_to_i);
 
 
@@ -405,9 +408,91 @@ void PairReaxC::coeff( int nargs, char **args )
       wanted_dist[i][j]=0;
     }
   }
+  
+  //FOR EXTRA POTENTIAL PARAMETERS
+  parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
+  if (parameters_fp == NULL) {
+    char str[128];
+    snprintf(str,128,"Cannot open fix reax/c/bonds file Extra_Potential_Parameters.txt");
+    error->one(FLERR,str);
+  }
+  char buff[1000];
+  fread(buff, 1000, 1, parameters_fp);
+  //printf("\n--\n%s\n--\n",buff);
+  char *token = strtok(buff, "\n");
+  while(token){
+      //printf("1-----%s-----\n",token);
+      if(strcmp(token, "max_iterarions_of_potential")==0){
+        token = strtok(NULL, "\n");
+        sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
+        //printf("-----MAX_NUM_TIMESTEPS=%d-----\n",MAX_NUM_TIMESTEPS);
+      }
+      else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
+        for(int i=0; i<4; i++){
+          int type1, type2;
+         // printf("\ntokennnnnnnn-----%s-----\n",token);
+          double temp, _f1, _f2, _r12;
+          for(int j=0; j<5; j++){
+            if(j<4)
+              token = strtok(NULL, " ");
+            else
+              token = strtok(NULL, "\n");
+             //printf("tok-----%s-----\n",token);
+             sscanf(token, "%lf", &temp);
+            // printf("temp=%f\n", temp);
+             switch(j) {
+              case 0: type1=int(temp);
+               // printf("type1=%d\n", type1);
+                break;
+              case 1: type2=int(temp);
+                //printf("type2=%d\n", type2);
+                break;
+              case 2: _f1=temp;
+                //printf("_f1=%f\n", _f1);
+                break;
+              case 3: _f2=temp;
+                //printf("_f2=%f\n", _f2);
+                break;
+              case 4: _r12=temp;
+                //printf("_r12=%f\n", _r12);
+                break;
+            }
+            F1[type1][type2]=F1[type2][type1]=_f1*0.5;
+            F2[type1][type2]=F2[type2][type1]=_f2;
+            wanted_dist[type1][type2]=wanted_dist[type2][type1]=_r12;
+
+          }
+          //sscanf( token, "%d %d %f %f %f", &type1, &type2, &_f1, &_f2, &_r12);
+          //printf("\n%d %d %f %f %f\n", &type1, &type2, &_f1, &_f2, &_r12);
+        }
+      }
+      token = strtok(NULL, "\n");
+
+  }
+  /*  for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("f1=%f\t",F1[i][j]);
+    }
+  }
+  printf("\n");
+   for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("F2=%f\t",F2[i][j]);
+    }
+  }
+  printf("\n");
+   for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("r12=%f\t",wanted_dist[i][j]);
+    }
+  }
+  printf("\n");*/
+
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
-//*4
-  //O-C (3-1)
+  /*//O-C (3-1)
   F1[3][1]=F1[1][3]=250*0.5;
   F2[3][1]=F2[1][3]=0.5;
   wanted_dist[3][1]=wanted_dist[1][3]=3.0;
@@ -425,7 +510,29 @@ void PairReaxC::coeff( int nargs, char **args )
   //N-H (4-2)
   F1[4][2]=F1[2][4]=250*0.5;
   F2[4][2]=F2[2][4]=0.25;
-  wanted_dist[4][2]=wanted_dist[2][4]=2.0;
+  wanted_dist[4][2]=wanted_dist[2][4]=2.0;*/
+
+  /*for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("f1=%f\t",F1[i][j]);
+    }
+  }
+  printf("\n");
+   for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("F2=%f\t",F2[i][j]);
+    }
+  }
+  printf("\n");
+   for(int i=1; i<5; i++){
+    printf("\ni=%d:\t",i);
+    for(int j=1; j<5; j++){
+      printf("r12=%f\t",wanted_dist[i][j]);
+    }
+  }
+  printf("\n");*/
 
   //printf("\n~~~out coeff~~~");
 
@@ -1028,7 +1135,8 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
     //printf("\natom i: tag=%d type=%d, atom j: tag=%d type=%d, rsq=%f rij=%f, r12=%f",i_tag, itype, j_tag, jtype, rsq,rij, wanted_dist[itype][jtype]);
     //print the distance at the first 2 timesteps and at the last 2 timesteps
-    if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 || count_bb_timesteps%1000==0){
+    if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
+      //|| count_bb_timesteps%1000==0
       if( (itype==1 && jtype==4))
         printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==4 && jtype==1))
@@ -1079,11 +1187,11 @@ double PairReaxC::single_BB(int i, int j, int itype, int jtype, double rsq)
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
   
   //FOR DEBUGGING
-  if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+  /*if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
     printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
-  }
+  }*/
   //printf("\n~~~out single_BB~~~\n\n");
   
   return force;
