@@ -334,7 +334,7 @@ void PairReaxC::settings(int narg, char **arg)
 
 void PairReaxC::coeff( int nargs, char **args )
 {
-  printf("\n~~~in coeff~~~");
+  //printf("\n~~~in coeff~~~");
   if (!allocated) allocate();
 
   if (nargs != 3 + atom->ntypes)
@@ -425,7 +425,7 @@ void PairReaxC::coeff( int nargs, char **args )
       if(strcmp(token, "max_iterarions_of_potential")==0){
         token = strtok(NULL, "\n");
         sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
-        printf("-----MAX_NUM_TIMESTEPS=%d-----\n",MAX_NUM_TIMESTEPS);
+        //printf("-----MAX_NUM_TIMESTEPS=%d-----\n",MAX_NUM_TIMESTEPS);
       }
       else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
         for(int i=0; i<4; i++){
@@ -442,19 +442,19 @@ void PairReaxC::coeff( int nargs, char **args )
             // printf("temp=%f\n", temp);
              switch(j) {
               case 0: type1=int(temp);
-                printf("type1=%d\n", type1);
+               // printf("type1=%d\n", type1);
                 break;
               case 1: type2=int(temp);
-                printf("type2=%d\n", type2);
+                //printf("type2=%d\n", type2);
                 break;
               case 2: _f1=temp;
-                printf("_f1=%f\n", _f1);
+                //printf("_f1=%f\n", _f1);
                 break;
               case 3: _f2=temp;
-                printf("_f2=%f\n", _f2);
+                //printf("_f2=%f\n", _f2);
                 break;
               case 4: _r12=temp;
-                printf("_r12=%f\n", _r12);
+                //printf("_r12=%f\n", _r12);
                 break;
             }
             F1[type1][type2]=F1[type2][type1]=_f1*0.5;
@@ -469,7 +469,7 @@ void PairReaxC::coeff( int nargs, char **args )
       token = strtok(NULL, "\n");
 
   }
-    for(int i=1; i<5; i++){
+  /*  for(int i=1; i<5; i++){
     printf("\ni=%d:\t",i);
     for(int j=1; j<5; j++){
       printf("f1=%f\t",F1[i][j]);
@@ -489,7 +489,7 @@ void PairReaxC::coeff( int nargs, char **args )
       printf("r12=%f\t",wanted_dist[i][j]);
     }
   }
-  printf("\n");
+  printf("\n");*/
 
   /*  C_type=1 H_type=2 O_type=3 N_type=4   */
   //O-C (3-1)
@@ -512,7 +512,7 @@ void PairReaxC::coeff( int nargs, char **args )
   F2[4][2]=F2[2][4]=0.25;
   wanted_dist[4][2]=wanted_dist[2][4]=2.0;
 
-  for(int i=1; i<5; i++){
+  /*for(int i=1; i<5; i++){
     printf("\ni=%d:\t",i);
     for(int j=1; j<5; j++){
       printf("f1=%f\t",F1[i][j]);
@@ -532,9 +532,9 @@ void PairReaxC::coeff( int nargs, char **args )
       printf("r12=%f\t",wanted_dist[i][j]);
     }
   }
-  printf("\n");
+  printf("\n");*/
 
-  printf("\n~~~out coeff~~~");
+  //printf("\n~~~out coeff~~~");
 
 }
 
@@ -1062,7 +1062,6 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
     return 0;
   if(update->ntimestep<1000)
     return 0;
-  printf("\nupdate->laststep - update->ntimestep = %d\n", update->laststep-update->ntimestep);
   if(update->laststep-update->ntimestep<1500)
     return 0;
   printf("\n~~~in set_fourset~~~\n");

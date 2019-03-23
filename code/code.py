@@ -32,15 +32,13 @@ def dist_graph():
 	for line in text_list:
 		ln=line.split(" ")
 		i=0 #iterator on the line
-		if ln[i]=="#":
-			i+=1
-		if(i>=len(ln)):
-			continue;
+		if ln[i]=="#": i+=1
+		if(i>=len(ln)): continue
 		elif ln[i]=="Timestep":
 			timeStep=int(ln[i+1])
 			timeStep_index=int(timeStep/neverty_fix_check)
 			axis_x.append(timeStep)
-			continue;
+			continue
 		elif ln[i]=="atom":
 			atom_tag=int(ln[i+1])
 			atom_type=int(ln[i+3])
@@ -79,7 +77,7 @@ def dist_graph():
 	  "N": 4
 	}
 
-	axis_y=[ [], [], [], [], [], [], [], [],[], [], [], []]
+	axis_y=[ [], [], [], [], [], [], [], [],[], [], [], [],[], [], [], []]
 	for i in range(len(fourset_timestep)):
 		#fourset 1
 		for j in range(timeStep_index+1):
@@ -151,7 +149,6 @@ def E_graph():
 		timeStep_arr.append(int(ln[0]))
 		potE_arr.append(float(ln[2]))
 		totalE_arr.append(float(ln[3]))
-	print(timeStep_arr)
 
 	plt.plot(timeStep_arr,totalE_arr)
 	plt.xlabel("TimeStep")
@@ -163,14 +160,8 @@ def E_graph():
 	plt.ylabel("Potential Energy")
 	plt.title("Potential Energy As A Function Of Time")
 	plt.show()
-
 	
+dist_graph()
+extraE_graph()
+E_graph()
 
-
-
-		
-		
-		
-			
-			
-		

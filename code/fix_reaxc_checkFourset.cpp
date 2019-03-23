@@ -423,7 +423,9 @@ void FixReaxCCheckFourset::checkForFoursets(){
                                   fourset[0][1]=b_tag; //H
                                   fourset[0][2]=c_tag; //N
                                   fourset[0][3]=d_tag; //C
+
                               }
+                            
                             if(neigh_list[a][b]+neigh_list[c][d]<n_9_min_oh_cn && c_tag==9){
                               n_9_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
                               fourset[1][0]=a_tag; //O
@@ -437,6 +439,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
                             fourset[num_fourset-1][2]=c_tag; //N
                             fourset[num_fourset-1][3]=d_tag; //C*/
                             //printf("**** success! ****\n") ; 
+                          
                           }
                         }
                       }
@@ -575,6 +578,7 @@ void FixReaxCCheckFourset::allocate()
   memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
   memory->create(numneigh,atom->nlocal,"reax/c/checkFourset:numneigh");
   memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
+  
 }
 
 /* ---------------------------------------------------------------------- */
