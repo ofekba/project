@@ -74,6 +74,7 @@ class PairReaxC : public Pair {
   double single_BB(int, int, int, int, double);
   int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
   FILE *energy_fp; //file that document the added energy to the system
+  FILE *parameters_fp; //file of the parameters of the extra potential
 
  protected:
   double cutmax;
