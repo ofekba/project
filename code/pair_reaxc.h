@@ -33,6 +33,10 @@ PairStyle(reax/c,PairReaxC)
 #include "pair.h"
 #include "reaxc_types.h"
 
+
+/* OFEK TODO: PROTECTED/PUBLIC FUNCTIONS & VARS */
+
+
 namespace LAMMPS_NS {
 
 class PairReaxC : public Pair {
@@ -64,6 +68,7 @@ class PairReaxC : public Pair {
   double **F1,**F2, **wanted_dist;
   void add_bb_potential();
   int set_fourset(int**, int);
+  void set_extra_potential_parameters();
   int **fourset;
   int num_fourset;
   int count_bb_timesteps;

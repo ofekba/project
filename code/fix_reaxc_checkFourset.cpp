@@ -132,7 +132,7 @@ void FixReaxCCheckFourset::init()
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
   if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
-
+  reaxc->set_extra_potential_parameters(); 
 }
 
 /* ---------------------------------------------------------------------- */
@@ -578,7 +578,7 @@ void FixReaxCCheckFourset::allocate()
   memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
   memory->create(numneigh,atom->nlocal,"reax/c/checkFourset:numneigh");
   memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
-  
+
 }
 
 /* ---------------------------------------------------------------------- */

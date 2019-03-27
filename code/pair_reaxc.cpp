@@ -190,7 +190,6 @@ PairReaxC::~PairReaxC()
   memory->destroy( F1 );
   memory->destroy( F2 );
   fclose(energy_fp);
-  fclose(parameters_fp);
   memory->destroy(tag_to_i);
 
 
@@ -409,7 +408,15 @@ void PairReaxC::coeff( int nargs, char **args )
     }
   }
   
-  //FOR EXTRA POTENTIAL PARAMETERS
+
+  //printf("\n~~~out coeff~~~");
+
+}
+
+/* ---------------------------------------------------------------------- */
+
+void PairReaxC::set_extra_potential_parameters(){
+//FOR EXTRA POTENTIAL PARAMETERS
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
   if (parameters_fp == NULL) {
     char str[128];
@@ -533,9 +540,7 @@ void PairReaxC::coeff( int nargs, char **args )
     }
   }
   printf("\n");*/
-
-  //printf("\n~~~out coeff~~~");
-
+  fclose(parameters_fp);
 }
 
 /* ---------------------------------------------------------------------- */
