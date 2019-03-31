@@ -197,50 +197,16 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     //printf("\n==================nmax is=%d\n", nmax);//************
   }
   //printf("\n==================nlocal_tot=%d \n", nlocal_tot);
-  /*
-  int i, j, pj;
-  int tag_i, tag_j;
-  far_neighbor_data *nbr_pj;
-  int start_i, end_i;
-  int type_i, type_j;
-  reax_atom *atom_i, *atom_j;
-  reax_list *far_nbrs = (reaxc->lists)+ FAR_NBRS;
-  double cutoff = reaxc->control->bond_cut;
-
-
-  for (i = 0; i < reaxc->system->N; i++) {
-    //printf("\n=============i=%d=========\n",i);
-    atom_i = &(reaxc->system->my_atoms[i]);
-    type_i  = atom_i->type;
-    tag_i=(int)atom_i->orig_id;
-    if(tag_i <= 0||tag_i > nlocal_tot)
-      continue;
-    start_i = Start_Index(i, far_nbrs);
-    end_i  = End_Index(i, far_nbrs);
-    for( pj = start_i; pj < end_i; ++pj ) {
-      nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
-      if (nbr_pj->d <= cutoff) {
-        j = nbr_pj->nbr;
-        atom_j = &(reaxc->system->my_atoms[j]);
-        if(atom_j->orig_id > 0 && atom_j->orig_id<=nlocal_tot){
-          tag_j=atom_j->orig_id;
-          if(neigh_list[tag_i-1][tag_j-1] == -1){
-            numneigh[tag_i-1]++;
-            numneigh[tag_j-1]++;
-          }
-          neigh_list[tag_i-1][tag_j-1]=nbr_pj->d;
-          neigh_list[tag_j-1][tag_i-1]=nbr_pj->d;
-         }
-      }
-    }
-  }*/
+  
 
   for(int i=0; i<atom->nlocal; i++){
     int tag=atom->tag[i];
     tag_to_i[tag-1]=i;
   }
 
-  double x0, x1, x2;
+//NEIGH LIST BY CALCULATE DISTANCES
+
+/*  double x0, x1, x2;
   double del0, del1, del2;
   double dist;
   for( int i = 0; i < atom->nlocal; ++i ){
@@ -256,10 +222,61 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       neigh_list[atom->tag[i]-1][atom->tag[j]-1]=dist;
     }
   }
+  if(update->ntimestep<1){
+    for(int i=8; i<10; i++){
+      //nlocal_tot
+        printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
+        for(int j=0; j<nlocal_tot; j++){
+          printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
+        }
+        printf("|\n\n");
+    }
+  }*/
+
+
+  /*for(int i=0; i<117; i++)
+    for(int j=0; j<117; j++)
+      neigh_list[i][j]=0.0;*/
+  
+  //NEIGH LIST BY FAR NEIGH LIST STRUCT
+  int i, j, pj;
+  int start_i, end_i;
+  int type_i, type_j;
+  int btop_i;
+  reax_list *far_nbrs;
+  far_neighbor_data *nbr_pj;
+  reax_atom *atom_i, *atom_j;
+
+  far_nbrs = (reaxc->lists) + FAR_NBRS;
+
+  for( i = 0; i < reaxc->system->N; ++i ) {
+    atom_i = &(reaxc->system->my_atoms[i]);
+    type_i  = atom_i->type;
+    if (type_i < 0) continue;
+    
+    start_i = Start_Index(i, far_nbrs);
+    end_i   = End_Index(i, far_nbrs);
+    
+    for( pj = start_i; pj < end_i; ++pj ) {
+      nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
+      j = nbr_pj->nbr;
+      atom_j = &(reaxc->system->my_atoms[j]);
+      if (nbr_pj->d <= 8.0){
+        //add to neigh list
+        neigh_list[atom_i->orig_id-1][atom_j->orig_id-1]=nbr_pj->d;
+        neigh_list[atom_j->orig_id-1][atom_i->orig_id-1]=nbr_pj->d;
+      }
+    }
+  }
   
 
-//print the neighbors list
-  /*if(update->ntimestep<99){
+
+
+
+  // PRINTS FOR DEBUGGING
+
+  //print the neighbors list
+ /* if(update->ntimestep<1){
     for(i=0; i<nlocal_tot; i++){
         printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
         for(j=0; j<nlocal_tot; j++){
@@ -268,7 +285,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         printf("|\n\n");
     }
   }*/
-    //  printf("\n=============finish FindNbr=========\n");
+
   if(update->ntimestep%3000==0){
     /*//*****************
     i=52;
@@ -347,9 +364,9 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     }
     printf("|\n\n");*/
 
-
   }
 
+    //  printf("\n=============finish FindNbr=========\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -594,5 +611,3 @@ double FixReaxCCheckFourset::memory_usage()
 
   return bytes;
 }
-
-
