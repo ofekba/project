@@ -4,6 +4,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
+def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
+	plt.plot(axis_x,axis_y)
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
+	plt.title(title)
+	plt.show()
+	
+
 def dist_graph():
 	fp = open("dists.reax","r") 
 	text=fp.read() 
@@ -25,7 +33,7 @@ def dist_graph():
 	size=int(total_timesteps/neverty_fix_check) + 1
 
 	arr=np.zeros((size, 117, 117))
-	axis_x=[]
+	axis_x=[0]
 
 	fourset=[]
 	fourset_timestep=[]
@@ -120,14 +128,10 @@ def extraE_graph():
 	#print(axis_x)
 
 	x= [i for i in range(len(y))]
-	plt.plot(x,y)
-	plt.xlabel("timeStep")
-	plt.ylabel("energy")
-	plt.title("Additional Energy As A Function Of Time")
-	plt.show()
+	make_graph(x,y, "TimeStep", "added energy", "Additional Energy As A Function Of Time")
 
 	
-def E_graph():
+def log_graphs():
 	fp = open("log.lammps","r") 
 	text=fp.read() 
 
@@ -142,25 +146,29 @@ def E_graph():
 	timeStep_arr=[]
 	potE_arr=[]
 	totalE_arr=[]
+	temp_arr=[]
+	press_arr=[]
 	for line in text_list[i:]:
 		ln=line.split(" ")
 		ln = [x for x in ln if x != ""]
 		if ln[0]=="Loop": break
 		timeStep_arr.append(int(ln[0]))
+		temp_arr.append(float(ln[1]))
 		potE_arr.append(float(ln[2]))
 		totalE_arr.append(float(ln[3]))
+		press_arr.append(float(ln[4]))
 
-	plt.plot(timeStep_arr,totalE_arr)
-	plt.xlabel("TimeStep")
-	plt.ylabel("Total Energy")
-	plt.title("Total Energy As A Function Of Time")
-	plt.show()
-	plt.plot(timeStep_arr,potE_arr)
-	plt.xlabel("TimeStep")
-	plt.ylabel("Potential Energy")
-	plt.title("Potential Energy As A Function Of Time")
-	plt.show()
+	make_graph(timeStep_arr, temp_arr, "TimeStep", "Temprature", "Temprature As A Function Of Time")
+	make_graph(timeStep_arr, potE_arr, "TimeStep", "Potential Energy", "Potential Energy As A Function Of Time")
+	make_graph(timeStep_arr, press_arr, "TimeStep", "Pressure", "Pressure As A Function Of Time")
+	make_graph(timeStep_arr, totalE_arr, "TimeStep", "Total Energy", "Total Energy As A Function Of Time")
 	
+		
+	
+dist_graph()
+extraE_graph()
+log_graphs()
+
 dist_graph()
 extraE_graph()
 E_graph()

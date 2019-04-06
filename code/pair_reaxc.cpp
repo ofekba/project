@@ -428,11 +428,11 @@ void PairReaxC::set_extra_potential_parameters(){
   //printf("\n--\n%s\n--\n",buff);
   char *token = strtok(buff, "\n");
   while(token){
-      //printf("1-----%s-----\n",token);
+      //printf("\n\n\n1-----%s-----\n\n\n",token);
       if(strcmp(token, "max_iterarions_of_potential")==0){
         token = strtok(NULL, "\n");
         sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
-        //printf("-----MAX_NUM_TIMESTEPS=%d-----\n",MAX_NUM_TIMESTEPS);
+        //printf("\n\n\n-----MAX_NUM_TIMESTEPS=%d-----\n\n\n",MAX_NUM_TIMESTEPS);
       }
       else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
         for(int i=0; i<4; i++){
@@ -1074,7 +1074,7 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
     printf("fourset #%d: %d %d %d %d\n",i,foursets[i][0],foursets[i][1],foursets[i][2],foursets[i][3]);
   }
   fprintf(energy_fp,"\nstart");
-  printf("\nstart operate the potential");
+  printf("\nstart operate the potential\n");
   count_bb_timesteps=0;
   flag_bb=1;
   int i;
@@ -1143,9 +1143,9 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
       //|| count_bb_timesteps%1000==0
       if( (itype==1 && jtype==4))
-        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
-      else if( (itype==4 && jtype==1))
         printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
+      else if( (itype==4 && jtype==1))
+        printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==3 && jtype==2))
         printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
       else if( (itype==2 && jtype==3))

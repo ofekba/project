@@ -256,6 +256,10 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     
     start_i = Start_Index(i, far_nbrs);
     end_i   = End_Index(i, far_nbrs);
+
+    double **x = atom->x;
+    double xtmp,ytmp,ztmp,delx,dely,delz,rsq,rij;
+    int jjj, iii;
     
     for( pj = start_i; pj < end_i; ++pj ) {
       nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
@@ -263,8 +267,22 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       atom_j = &(reaxc->system->my_atoms[j]);
       if (nbr_pj->d <= 8.0){
         //add to neigh list
-        neigh_list[atom_i->orig_id-1][atom_j->orig_id-1]=nbr_pj->d;
-        neigh_list[atom_j->orig_id-1][atom_i->orig_id-1]=nbr_pj->d;
+        iii=tag_to_i[atom_i->orig_id-1];
+        xtmp = x[iii][0];
+        ytmp = x[iii][1];
+        ztmp = x[iii][2];
+        jjj=tag_to_i[atom_j->orig_id-1];
+        delx = xtmp - x[jjj][0];
+        dely = ytmp - x[jjj][1];
+        delz = ztmp - x[jjj][2];
+        rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
+        rij=sqrt(rsq);
+        if(rij<8.0){
+          neigh_list[atom_i->orig_id-1][atom_j->orig_id-1]=nbr_pj->d;
+          neigh_list[atom_j->orig_id-1][atom_i->orig_id-1]=nbr_pj->d;
+      }
+
+        
       }
     }
   }
@@ -387,7 +405,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
   //mine
   tagint a_tag, b_tag, c_tag, d_tag;
   int a_type, b_type, c_type, d_type;
-  int a, b, c, d;
+  int a, ai, b, c, d;
   int i; //the index of an atom in the atom->tag array
 
   //const
@@ -400,9 +418,10 @@ void FixReaxCCheckFourset::checkForFoursets(){
   double n_8_min_oh_cn=17;
   double n_9_min_oh_cn=17;
 
-  for (a = 0; a < nlocal; a++) {
-    a_tag = atom->tag[a];
-    a_type = atom->type[a];
+  for (ai = 0; ai < nlocal; ai++) {
+    a_tag = atom->tag[ai];
+    a_type = atom->type[ai];
+    a=a_tag-1;
     if(a_type==FIRST_TYPE){
       for (b = 0; b < nlocal; b++) {
         b_tag = b+1;
@@ -411,7 +430,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
           break;
         b_type = atom->type[i]; 
         if(b_type==SECOND_TYPE){
-          if( 1.3<neigh_list[a][b] && neigh_list[a][b]<8.0 ){
+          if( 1.3<neigh_list[a][b] && neigh_list[a-1][b]<8.0 ){
             //printf("\nfirst cond OK\n");//**********
             for (c = 0; c < nlocal; c++) {
               c_tag = c+1; 
@@ -433,30 +452,40 @@ void FixReaxCCheckFourset::checkForFoursets(){
                        // printf("\nthird cond OK\n");//**********
                         if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
                           //printf("\nfourth cond OK\n");//**********
-                          if(a_tag==d_tag+4 || a_tag==d_tag+2){
-                              if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn && c_tag==8){
-                                  n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
-                                  fourset[0][0]=a_tag; //O
-                                  fourset[0][1]=b_tag; //H
-                                  fourset[0][2]=c_tag; //N
-                                  fourset[0][3]=d_tag; //C
+                          //code for level1 run
+                         /* if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn){
+                            n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
+                            num_fourset++;
 
-                              }
-                            
-                            if(neigh_list[a][b]+neigh_list[c][d]<n_9_min_oh_cn && c_tag==9){
+                            fourset[num_fourset][0]=fourset[0][0]; //O
+                            fourset[num_fourset][1]=fourset[0][1]; //H
+                            fourset[num_fourset][2]=fourset[0][2]; //N
+                            fourset[num_fourset][3]=fourset[0][3]; //C
+
+                            fourset[0][0]=a_tag; //O
+                            fourset[0][1]=b_tag; //H
+                            fourset[0][2]=c_tag; //N
+                            fourset[0][3]=d_tag; //C
+                          }*/
+                          //code for level2 run
+                          if(a_tag==d_tag+4 || a_tag==d_tag+2){
+                            if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn && c_tag==8){
+                              n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
+                              fourset[0][0]=a_tag; //O
+                              fourset[0][1]=b_tag; //H
+                              fourset[0][2]=c_tag; //N
+                              fourset[0][3]=d_tag; //C
+                              num_fourset++;
+                            }
+                            else if(neigh_list[a][b]+neigh_list[c][d]<n_9_min_oh_cn && c_tag==9){
                               n_9_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
                               fourset[1][0]=a_tag; //O
                               fourset[1][1]=b_tag; //H
                               fourset[1][2]=c_tag; //N
                               fourset[1][3]=d_tag; //C
+                              num_fourset++;
                             }
-                            num_fourset++;
-                            /*fourset[num_fourset-1][0]=a_tag; //O
-                            fourset[num_fourset-1][1]=b_tag; //H
-                            fourset[num_fourset-1][2]=c_tag; //N
-                            fourset[num_fourset-1][3]=d_tag; //C*/
                             //printf("**** success! ****\n") ; 
-                          
                           }
                         }
                       }
@@ -471,31 +500,41 @@ void FixReaxCCheckFourset::checkForFoursets(){
     }
   }
  // printf("finish over the neigh list\n");
+
+
+  //operate the extra potential
   if(num_fourset!=0){
- /*  if(num_fourset>1){
+    int apply_flag=0;
+
+    //for level1 run
+    /*apply_flag=reaxc->set_fourset(fourset, 1);
+    if(apply_flag==1){
+      printf("list of foursets:\n");
       for(int i=0; i<num_fourset;i++){
-        printf("fourset #%d is: ", i);
-        for(int j=0; j<4;j++)
-          printf("%d ",fourset[i][j]);
-        printf("\n");
+          printf("fourset #%d is: ", i);
+          for(int j=0; j<4;j++)
+            printf("%d ",fourset[i][j]);
+          printf("\n");
       }
       printf("\n");
     }*/
-    //reaxc->set_fourset(fourset, num_fourset);
-    int apply_flag=0;
-    /*fourset[0][0]=fourset[1][0]; //O
-      fourset[0][1]=fourset[1][1]; //H
-      fourset[0][2]=fourset[1][2]; //N
-      fourset[0][3]=fourset[1][3]; //C
-      if(fourset[0][3]!=0)
-        reaxc->set_fourset(fourset, 1);*/
 
+  //for level2 run
     if(n_8_min_oh_cn<17 && n_9_min_oh_cn<17){
-      apply_flag=reaxc->set_fourset(fourset, 2);
+      if(n_8_min_oh_cn<n_9_min_oh_cn)
+        apply_flag=reaxc->set_fourset(fourset, 1);
+      else{
+        fourset[0][0]=fourset[1][0]; //O
+        fourset[0][1]=fourset[1][1]; //H
+        fourset[0][2]=fourset[1][2]; //N
+        fourset[0][3]=fourset[1][3]; //C
+        apply_flag=reaxc->set_fourset(fourset, 1);
+      }
       if(apply_flag==1){
         fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
-        fprintf(fp,"1/2- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
-        fprintf(fp,"2/2- %d %d %d %d \n",fourset[1][0], fourset[1][1], fourset[1][2], fourset[1][3]);
+        fprintf(fp,"1/1- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+        //fprintf(fp,"1/2- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+        //fprintf(fp,"2/2- %d %d %d %d \n",fourset[1][0], fourset[1][1], fourset[1][2], fourset[1][3]);
       }
     }
     else{
@@ -513,6 +552,35 @@ void FixReaxCCheckFourset::checkForFoursets(){
         fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
       }
     }
+  }
+    //FOR DEBUGGING
+    /*if(apply_flag==1){
+      double **x = atom->x;
+      printf("\nOH=%f, CN=%f\n", neigh_list[fourset[0][0]-1][fourset[0][1]-1], neigh_list[fourset[0][2]-1][fourset[0][3]-1]);
+      i=tag_to_i[fourset[0][0]-1];
+      double xtmp = x[i][0];
+      double ytmp = x[i][1];
+      double ztmp = x[i][2];
+      int j=tag_to_i[fourset[0][1]-1];
+      double delx = xtmp - x[j][0];
+      double dely = ytmp - x[j][1];
+      double delz = ztmp - x[j][2];
+      double rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
+      double roh=sqrt(rsq);
+
+      i=tag_to_i[fourset[0][2]-1];
+       xtmp = x[i][0];
+       ytmp = x[i][1];
+       ztmp = x[i][2];
+      j=tag_to_i[fourset[0][3]-1];
+       delx = xtmp - x[j][0];
+       dely = ytmp - x[j][1];
+       delz = ztmp - x[j][2];
+      rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
+      float rcn=sqrt(rsq);
+      printf("\nOH=%f, CN=%f\n", roh, rcn);
+    }*/
+      
     //print the foursets
     /*if(update->ntimestep<1){
       for(int i=0; i<num_fourset;i++){
@@ -523,7 +591,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
       }
       printf("\n");
     }*/
-  }
+  
 
   //printf("\n\n==========finish checkFourset func=============\n");
 }
@@ -611,3 +679,5 @@ double FixReaxCCheckFourset::memory_usage()
 
   return bytes;
 }
+
+
