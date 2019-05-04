@@ -28,15 +28,27 @@ def dist_graph():
 	if ln[1] == "totalTimesteps":
 		total_timesteps=int(ln[2])
 
+	ln=text_list[1].split(" ")
+	if ln[1] == "totalAtomNum":
+		total_atomNum=int(ln[2])
+		print("total_atomNum ", total_atomNum)
+	total_atomNum=234
+	
+	
+	ln=text_list[2].split(" ")
+	if ln[1] == "fix_nevery":
+		neverty_fix_check=int(ln[2])
+		print("neverty_fix_check ", neverty_fix_check)
 	neverty_fix_check=10
 
 	size=int(total_timesteps/neverty_fix_check) + 1
 
-	arr=np.zeros((size, 117, 117))
-	axis_x=[0]
+	arr=np.zeros((size, total_atomNum, total_atomNum))
+	axis_x=[]
 
 	fourset=[]
 	fourset_timestep=[]
+	num_of_foursets=0
 	for line in text_list:
 		ln=line.split(" ")
 		i=0 #iterator on the line
@@ -63,11 +75,13 @@ def dist_graph():
 			fs_ts=int(ln[i]) #current fourset timestep
 			i+=2
 			fourset.append([int(x) for x in ln[i+1:i+5]])
+			num_of_foursets+=1
 			fourset_timestep.append(fs_ts)
 			if ln[i]=="1/2-":
 				i+=5
 				fourset.append([int(x) for x in ln[i+1:i+5]])
 				fourset_timestep.append(fs_ts)
+				num_of_foursets+=1
 
 
 	o_list, h_list, n_list, c_list= [],[],[],[]
@@ -85,15 +99,33 @@ def dist_graph():
 	  "N": 4
 	}
 
-	axis_y=[ [], [], [], [], [], [], [], [],[], [], [], [],[], [], [], []]
+	axis_y=[]
+	for j in range(4*num_of_foursets):
+		axis_y.append([])
 	for i in range(len(fourset_timestep)):
 		#fourset 1
 		for j in range(timeStep_index+1):
 			index=i*4
-			axis_y[index].append(arr[j][c_list[i]-1][o_list[i]-1]) #C-O dist
-			axis_y[index+1].append(arr[j][o_list[i]-1][h_list[i]-1]) #O-H dist
-			axis_y[index+2].append(arr[j][n_list[i]-1][h_list[i]-1]) #N-H dist
-			axis_y[index+3].append(arr[j][n_list[i]-1][c_list[i]-1]) #N-C dist
+			temp_dist=arr[j][c_list[i]-1][o_list[i]-1]
+			if temp_dist==0:
+				temp_dist=arr[j][o_list[i]-1][c_list[i]-1]
+			axis_y[index].append(temp_dist) #C-O dist
+			
+			temp_dist=arr[j][o_list[i]-1][h_list[i]-1]
+			if temp_dist==0:
+				temp_dist=arr[j][h_list[i]-1][o_list[i]-1]
+			axis_y[index+1].append(temp_dist) #O-H dist
+			
+			temp_dist=arr[j][n_list[i]-1][h_list[i]-1]
+			if temp_dist==0:
+				temp_dist=arr[j][h_list[i]-1][n_list[i]-1]
+			axis_y[index+2].append(temp_dist) #N-H dist
+			
+			temp_dist=arr[j][n_list[i]-1][c_list[i]-1]
+			if temp_dist==0:
+				temp_dist=arr[j][c_list[i]-1][n_list[i]-1]
+			axis_y[index+3].append(temp_dist) #N-C dist
+			
 
 
 	for i in range(len(fourset_timestep)):
@@ -166,10 +198,6 @@ def log_graphs():
 		
 	
 dist_graph()
-extraE_graph()
-log_graphs()
-
-dist_graph()
-extraE_graph()
-E_graph()
+#extraE_graph()
+#log_graphs()
 
