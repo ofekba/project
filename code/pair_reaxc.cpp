@@ -1067,9 +1067,9 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
     return 0;
   if(update->ntimestep<1000)
     return 0;
-  if(update->laststep-update->ntimestep<1500)
+  if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS)
     return 0;
-  printf("\n~~~in set_fourset~~~\n");
+  printf("\n~~~in set_fourset timestep %d~~~\n", update->ntimestep);
   for(int i=0; i<num_foursets; i++){
     printf("fourset #%d: %d %d %d %d\n",i,foursets[i][0],foursets[i][1],foursets[i][2],foursets[i][3]);
   }
@@ -1105,7 +1105,7 @@ double PairReaxC::compute_BB(){
     e+=compute_BB_pair(fourset[k][0], fourset[k][1]); //O-H
     e+=compute_BB_pair(fourset[k][0], fourset[k][3]); //O-C
     e+=compute_BB_pair(fourset[k][2], fourset[k][3]); //N-C
-    e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
+    //e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
   }
  //printf("\n~~~out compute_BB~~~");
  return e;
