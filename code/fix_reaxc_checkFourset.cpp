@@ -580,9 +580,13 @@ void FixReaxCCheckFourset::checkForFoursets(){
 
 void FixReaxCCheckFourset::followDistFunc()
 {
-  if(update->ntimestep==0)
+  int _nevery=10;
+  if(update->ntimestep==0){
     fprintf(fp,"# totalTimesteps " BIGINT_FORMAT " \n",update->laststep);
-  if(update->ntimestep%10!=0)
+    fprintf(fp,"# totalAtomNum %d \n",atom->nlocal);
+    fprintf(fp,"# fix_nevery %d \n",_nevery);
+  }
+  if(update->ntimestep%_nevery!=0)
     return;
   double x0, x1, x2;
   double del0, del1, del2;
