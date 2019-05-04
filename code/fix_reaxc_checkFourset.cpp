@@ -280,6 +280,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         if(rij<8.0){
           neigh_list[atom_i->orig_id-1][atom_j->orig_id-1]=nbr_pj->d;
           neigh_list[atom_j->orig_id-1][atom_i->orig_id-1]=nbr_pj->d;
+        if(update->ntimestep==1000&&atom_i->orig_id==53&&atom_j->orig_id==29)
+          printf("\n\ntimestep=%d OH=%f, rsq=%f, delx=%f, dely=%f, delz=%f, xi=%f, yi=%f, zi=%f, xj=%f, yj=%f, zj=%f\n",update->ntimestep,rij,rsq,delx,dely,delz,xtmp,ytmp,ztmp,x[jjj][0],x[jjj][1],x[jjj][2]);
       }
 
         
@@ -453,7 +455,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
                         if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
                           //printf("\nfourth cond OK\n");//**********
                           //code for level1 run
-                         /* if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn){
+                          /*if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn){
                             n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
                             num_fourset++;
 
@@ -517,7 +519,10 @@ void FixReaxCCheckFourset::checkForFoursets(){
           printf("\n");
       }
       printf("\n");
-    }*/
+      fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
+      fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+    }
+  }*/
 
   //for level2 run
     if(n_8_min_oh_cn<17 && n_9_min_oh_cn<17){
@@ -532,7 +537,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
       }
       if(apply_flag==1){
         fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
-        fprintf(fp,"1/1- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+        fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
         //fprintf(fp,"1/2- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
         //fprintf(fp,"2/2- %d %d %d %d \n",fourset[1][0], fourset[1][1], fourset[1][2], fourset[1][3]);
       }
