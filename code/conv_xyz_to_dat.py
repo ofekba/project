@@ -20,22 +20,21 @@ def conv_to_dat(text, file_name):
 	dat_file+=str(num_atoms)+" atoms\n"
 	dat_file+="4 atom types\n\n"
 
-	box_x = float (input("Enter a box x value: ") )
-	box_y = float (input("Enter a box y value: ") )
-	box_z = float (input("Enter a box z value: ") )
-	dat_file+="0 "+str(box_x)+" xlo xhi\n"
-	dat_file+="0 "+str(box_y)+" ylo yhi\n"
-	dat_file+="0 "+str(box_z)+" zlo zhi\n\n"
+	box_xlo = float (input("Enter a box xlo value: ") )
+	box_xhi = float (input("Enter a box xhi value: ") )
+	box_ylo = float (input("Enter a box ylo value: ") )
+	box_yhi = float (input("Enter a box yhi value: ") )
+	box_zlo = float (input("Enter a box zlo value: ") )
+	box_zhi = float (input("Enter a box zhi value: ") )
+	dat_file+=str(box_xlo)+" "+str(box_xhi)+" xlo xhi\n"
+	dat_file+=str(box_ylo)+" "+str(box_yhi)+" ylo yhi\n"
+	dat_file+=str(box_zlo)+" "+str(box_zhi)+" zlo zhi\n\n"
 
 	dat_file+="Masses\n\n"
-	C_mass = float (input("Enter a C mass: ") )
-	H_mass = float (input("Enter a H mass: ") )
-	O_mass = float (input("Enter a O mass: ") )
-	N_mass = float (input("Enter a N mass: ") )
-	dat_file+="1 "+str(C_mass)+"\n"
-	dat_file+="2 "+str(H_mass)+"\n"
-	dat_file+="3 "+str(O_mass)+"\n"
-	dat_file+="4 "+str(N_mass)+"\n\n"
+	dat_file+="1 12.0\n"
+	dat_file+="2 1.008\n"
+	dat_file+="3 15.999\n"
+	dat_file+="4 14.0\n\n"
 
 	dat_file+="Atoms\n\n"
 	atom_tag=1
@@ -62,7 +61,7 @@ typedict =	{
   "N": 4
 }
 
-file_name = str (input("Enter an XYX file name: ") )
+file_name = str (input("Enter an XYZ file name: ") )
 try:
     with open(file_name,"r") as fp:
         text = fp.read()
