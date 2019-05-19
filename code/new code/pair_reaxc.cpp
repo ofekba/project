@@ -1050,7 +1050,7 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
 
 /* ---------------------------------------------------------------------- */
 double PairReaxC::compute_BB(){
-  printf("\nin computebb ()\n");
+  //printf("\nin computebb ()\n");
   for (int i = 0; i < atom->nlocal; i++) {
     for (int j = 0; j < 3; j++) {
       f_fourset[i][j] = 0;
@@ -1065,7 +1065,7 @@ double PairReaxC::compute_BB(){
     //e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
   }
 
-  printf("\nout computebb ()\n");
+//printf("\nout computebb ()\n");
  return e;
 }
 
@@ -1094,6 +1094,16 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
       
   rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
   rij=sqrt(rsq);
+
+  int real_i=atom->map(i_tag);
+  int real_j=atom->map(j_tag);
+  if(update->ntimestep%10==0){
+    printf("real_i=%d real_j=%d \n",real_i,real_j);
+    real_i=tag_to_i[i_tag-1];
+    real_j=tag_to_i[j_tag-1];
+    printf("map_style=%d tag_i %d tag_to_i %d tag_j %dtag_to_j %d\n",atom->map_style,i_tag,real_i,j_tag,real_j);
+    printf("tag_to_i_to_tag=%d tag_to_j_to_tag=%d \n",atom->tag[real_i],atom->tag[real_j]);
+  }
     
   //FOR DEBUGGING
   //print the distance at the first 2 timesteps and at the last 2 timesteps
@@ -1116,7 +1126,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
       printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
   }
     
-  fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
+  //fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
     
   /*//calculate the F force vector for atom i
   f_fourset[i_tag-1][0] += (delx*fpair)/rij;
@@ -1127,7 +1137,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
   f_fourset[j_tag-1][2] -= (delz*fpair)/rij;*/
 
-  workspace->f[i][0] += (delx*fpair)/rij;
+  /*workspace->f[i][0] += (delx*fpair)/rij;
   workspace->f[i][1] += (dely*fpair)/rij;
   workspace->f[i][2] += (delz*fpair)/rij;
 
@@ -1140,7 +1150,8 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   double e=F1[itype][jtype] * (1 - exp( -F2[itype][jtype] * r * r ));
   if(update->ntimestep%10==0)
     printf("\nADDED E=%f\n",e);
-  return e;
+  return e;*/
+  return 0;
 
 }
 /* ---------------------------------------------------------------------- */
@@ -1154,12 +1165,7 @@ double PairReaxC::single_BB(int i, int j, int itype, int jtype, double rsq)
   double r= rsq-wanted_dist[itype][jtype];
   double temp= -F2[itype][jtype] * r;
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
-  int real_i=atom->map(atom->tag[i]);
-  if(update->ntimestep%10==0)
-    printf("tag_i %d i %d is_tag_i %d",i,real_i,atom->tag[real_i]);
-
-
-  
+    
   //FOR DEBUGGING
   //if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
   if(update->ntimestep%10==0){
