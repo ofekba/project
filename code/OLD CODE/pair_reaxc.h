@@ -33,6 +33,10 @@ PairStyle(reax/c,PairReaxC)
 #include "pair.h"
 #include "reaxc_types.h"
 
+
+/* OFEK TODO: PROTECTED/PUBLIC FUNCTIONS & VARS */
+
+
 namespace LAMMPS_NS {
 
 class PairReaxC : public Pair {
@@ -58,7 +62,7 @@ class PairReaxC : public Pair {
   mpi_datatypes *mpi_data;
 
   bigint ngroup;
-  
+
   //mine
   double **f_fourset;
   double **F1,**F2, **wanted_dist;
@@ -69,17 +73,15 @@ class PairReaxC : public Pair {
   int num_fourset;
   int count_bb_timesteps;
   int flag_bb;
-  int tag_to_i (int);
+  int *tag_to_i;
   double compute_BB();
   double compute_BB_pair(int, int);
-  double single_BB(int, int, int, int, int, int, double);
+  double single_BB(int, int, int, int, double);
   int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
   FILE *energy_fp; //file that document the added energy to the system
   FILE *parameters_fp; //file of the parameters of the extra potential
 
-
  protected:
-  char *fix_id;
   double cutmax;
   int nelements;                // # of unique elements
   char **elements;              // names of unique elements

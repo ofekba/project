@@ -21,7 +21,6 @@ FixStyle(reax/c/checkFourset,FixReaxCCheckFourset)
 #define LMP_FIX_REAXC_CHECK_FOURSET_H
 
 #include <cstdio>
-#include <cstdlib>
 #include "fix.h"
 #include "pointers.h"
 
@@ -38,9 +37,11 @@ class FixReaxCCheckFourset : public Fix {
 
  protected:
   int me, nprocs, nmax, ntypes, maxsize;
+  int *numneigh; // list of numneigh for each atom
   int **fourset; //list of fourset to appky tha potential on
   int num_fourset; //0 if the list is empty. else, number of fourset
-  FILE *fp;
+  double **neigh_list;
+  int *tag_to_i;
 
   void allocate();
   void destroy();
@@ -48,6 +49,10 @@ class FixReaxCCheckFourset : public Fix {
   void FindNbr(struct _reax_list*);
   int nint(const double &);
   virtual double memory_usage();
+  void checkForFoursets(); //*****my func*****
+  int from_tag_to_i(tagint tag);//*****my func*****
+  FILE *fp;
+  void followDistFunc();
 
   bigint nvalid, nextvalid();
   struct _reax_list *lists;
