@@ -140,7 +140,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
-  MAX_NUM_TIMESTEPS=6500; //DEFAULT VALUE
+  MAX_NUM_TIMESTEPS=5000; //DEFAULT VALUE
   parameters_fp=NULL;
 
 
@@ -228,7 +228,7 @@ void PairReaxC::allocate( )
   memory->create(cutghost,n+1,n+1,"pair:cutghost");
 
   //mine
-  memory->create(f_fourset,atom->nlocal,3,"pair:f_fourset");
+  memory->create(f_fourset,atom->nlocal,3,"pair:f_fourset"); //no need
   memory->create(fourset,atom->nlocal,4,"pair:fourset");
   memory->create(wanted_dist,n+1,n+1,"pair:wanted_dist");
   memory->create(F1,n+1,n+1,"pair:F1");
@@ -960,9 +960,16 @@ void PairReaxC::FindBond()
 /* ---------------------------------------------------------------------- */
 
 void PairReaxC::set_extra_potential_parameters(){
+  //printf("\nPairReaxC:; in set_extra_potential_parameters\n");
+
+//ofek
+
+//TODO: add file format checker!!!!!!!!!!
+
 //FOR EXTRA POTENTIAL PARAMETERS
-  if(parameters_fp!=NULL)
-    return;
+  if (!allocated) allocate();
+  if(parameters_fp!=NULL) return;
+
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
   if (parameters_fp == NULL) {
     char str[128];
@@ -971,7 +978,9 @@ void PairReaxC::set_extra_potential_parameters(){
   }
   char buff[1000];
   fread(buff, 1000, 1, parameters_fp);
+
   char *token = strtok(buff, "\n");
+  int finish_flag=0;
   while(token){
     if(strcmp(token, "max_iterarions_of_potential")==0){
       token = strtok(NULL, "\n");
@@ -979,7 +988,7 @@ void PairReaxC::set_extra_potential_parameters(){
     }
     else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
       for(int i=0; i<4; i++){
-        int type1, type2;
+        int type1=0, type2=0;
         double temp, _f1, _f2, _r12;
         for(int j=0; j<5; j++){
           if(j<4)
@@ -999,6 +1008,8 @@ void PairReaxC::set_extra_potential_parameters(){
             case 4: _r12=temp;
               break;
           }
+          if(type1==0 ||type2==0) continue;
+
           F1[type1][type2]=F1[type2][type1]=_f1*0.5;
           F2[type1][type2]=F2[type2][type1]=_f2;
           wanted_dist[type1][type2]=wanted_dist[type2][type1]=_r12;
@@ -1006,10 +1017,19 @@ void PairReaxC::set_extra_potential_parameters(){
           //printf("\n~~~~type1 %d type2 %d _f1=%f _f2=%f _r12=%f MAX_NUM_TIMESTEPS=%d\n",type1, type2, _f1,_f2, _r12, MAX_NUM_TIMESTEPS);
         }
       }
+      finish_flag=1;
+    }
+    if(finish_flag==1){
+      /* printf("\nfinish set_extra_potential_parameters\n");
+       break;*/
+      fclose(parameters_fp);
+      //printf("\nPairReaxC:; out set_extra_potential_parameters\n");
+      return;
     }
     token = strtok(NULL, "\n");
   }
   fclose(parameters_fp);
+  printf("\nPairReaxC:; iout set_extra_potential_parameters\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1082,6 +1102,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   
   i=tag_to_i(i_tag);
   if(i==-1) return -1;
+  if(atom->tag[i]!=i_tag) return -1;
 
   xtmp = x[i][0];
   ytmp = x[i][1];
@@ -1090,6 +1111,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
 
   j=tag_to_i(j_tag);
   if(j==-1) return -1;
+  if(atom->tag[j]!=j_tag) return -1;
   jtype = type[j];
 
   delx = xtmp - x[j][0];
@@ -1139,9 +1161,9 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   workspace->f[i][1] += (dely*fpair)/rij;
   workspace->f[i][2] += (delz*fpair)/rij;
 
-  workspace->f[j][0] += (delx*fpair)/rij;
-  workspace->f[j][1] += (dely*fpair)/rij;
-  workspace->f[j][2] += (delz*fpair)/rij;
+  workspace->f[j][0] -= (delx*fpair)/rij;
+  workspace->f[j][1] -= (dely*fpair)/rij;
+  workspace->f[j][2] -= (delz*fpair)/rij;
     
   //calculate and return the E (energy)
   double r=rij-wanted_dist[itype][jtype];
