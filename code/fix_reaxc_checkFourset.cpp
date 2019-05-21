@@ -338,6 +338,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       fourset[0][2] = fourset[rand_num][2];
       fourset[0][3] = fourset[rand_num][3];
 
+      
+
       //OFEK
       //TODO: to operate the potentil on 2 fourset togther
       
@@ -361,6 +363,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       //OFEK
       if(apply_flag==1)
         printf("\nstart operate the potential\n");
+        fprintf (fp,"\n# fourset O H N C at timestep" BIGINT_FORMAT " : ",update->ntimestep);
+      fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
     }
   
   

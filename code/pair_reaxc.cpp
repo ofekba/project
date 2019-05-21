@@ -1185,11 +1185,11 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
   
   //FOR DEBUGGING
   //OFEK
-  if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+ /* if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
     printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
-  }
+  }*/
   
   return force;
 }
