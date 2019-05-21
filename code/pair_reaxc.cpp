@@ -1195,7 +1195,7 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
 }
 
 /* ---------------------------------------------------------------------- */
-//NEED??
+//NEED?? no
 void PairReaxC::add_bb_potential(){
   printf("in add_bb_potential\n");
   if(flag_bb==0)
