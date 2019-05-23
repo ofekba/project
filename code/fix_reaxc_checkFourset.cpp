@@ -361,10 +361,11 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
 
       int apply_flag = reaxc->set_fourset(fourset, 1);
       //OFEK
-      if(apply_flag==1)
+      if(apply_flag==1){
         printf("\nstart operate the potential\n");
         fprintf (fp,"\n# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
-      fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+        fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
+      }
     }
   
   

@@ -464,9 +464,11 @@ void PairReaxC::set_extra_potential_parameters(){
                 //printf("_r12=%f\n", _r12);
                 break;
             }
-            F1[type1][type2]=F1[type2][type1]=_f1*0.5;
-            F2[type1][type2]=F2[type2][type1]=_f2;
-            wanted_dist[type1][type2]=wanted_dist[type2][type1]=_r12;
+            //if(type1!=0 && type2!=0){
+              F1[type1][type2]=F1[type2][type1]=_f1*0.5;
+              F2[type1][type2]=F2[type2][type1]=_f2;
+              wanted_dist[type1][type2]=wanted_dist[type2][type1]=_r12;
+            //}
 
           }
           //sscanf( token, "%d %d %f %f %f", &type1, &type2, &_f1, &_f2, &_r12);
@@ -1063,7 +1065,7 @@ void PairReaxC::add_bb_potential(){
 /*returns 1 if apply the extra potential on the foursets. else, 0*/
 int PairReaxC::set_fourset(int **foursets, int num_foursets){
   // printf("\n~~~in set_fourset~~~\n");
-  if(count_bb_timesteps>0)
+  if(count_bb_timesteps>0 || flag_bb==1)
     return 0;
   if(update->ntimestep<1000)
     return 0;

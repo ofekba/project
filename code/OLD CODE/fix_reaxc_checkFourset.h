@@ -42,6 +42,9 @@ class FixReaxCCheckFourset : public Fix {
   int num_fourset; //0 if the list is empty. else, number of fourset
   double **neigh_list;
   int *tag_to_i;
+  int _nevery;
+  int box_x_len, box_y_len, box_z_len;
+  double box_xhi, box_yhi, box_zhi, box_xlo, box_ylo, box_zlo;
 
   void allocate();
   void destroy();
