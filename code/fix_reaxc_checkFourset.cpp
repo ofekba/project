@@ -216,17 +216,18 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     atom_i1 = &(reaxc->system->my_atoms[_o]);
     type_i1  = atom_i1->type;
     tag_i1 = atom_i1->orig_id;
-    if (type_i1 != TYPE_O) continue;
+    
+    if(fp!=NULL){
+      if((tag_i1-8)%43==0 ||(tag_i1-16)%43==0  || (tag_i1-22)%43==0 ==60 || (tag_i1-18)%43==0  || (tag_i1-23)%43==0 || (tag_i1-21)%43==0 || (tag_i1-15)%43==0 || (tag_i1-19)%43==0 || (tag_i1-(num_of_epons*43)-8)%31==0 || (tag_i1-(num_of_epons*43)-9)%31==0 ){
+        fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
+      }
+    }
+
+
     start_o = Start_Index(_o, far_nbrs);
     end_o   = End_Index(_o, far_nbrs);
     start_12 = Start_Index(_o, bond_nbrs);
     end_12   = End_Index(_o, bond_nbrs);
-
-    if(fp!=NULL){
-      if((tag_i1-8)%43==0 ||(tag_i1-16)%43==0  || (tag_i1-22)%43==0 ==60 || (tag_i1-18)%43==0  || (tag_i1-23)%43==0 || (tag_i1-21)%43==0 || (tag_i1-15)%43==0 || (tag_i1-19)%43==0 || (tag_i1-(num_of_epons*43)-8)%31==0 || (tag_i1-(num_of_epons*43)-9)%31==0 ){
-        fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1);
-      }
-    }
 
     for( pi1 = start_12; pi1 < end_12; ++pi1 ) {
       nbr_p_12 = &( bond_nbrs->select.bond_list[pi1] );
@@ -253,7 +254,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
           fprintf(fp,"%d %f ",tag_i2, nbr_p_oh->d);
         }
       }
-
+      if (type_i1 != TYPE_O) continue;
       //printf("o %d type %d atom %d type %d\n", atom_i1->orig_id, type_i1, atom_i2->orig_id, type_i2);
       if(type_i2 != TYPE_H) continue;
       if (1.3 <= nbr_p_oh->d && nbr_p_oh->d <= 8.0 ){
