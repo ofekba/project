@@ -411,8 +411,9 @@ void FixReaxCCheckFourset::checkForFoursets(){
                             fourset[0][2]=c_tag; //N
                             fourset[0][3]=d_tag; //C
                           }*/
+
                           //code for level2 run N=8/9
-                          //if(a_tag==d_tag+4 || a_tag==d_tag+2){
+                         // if(a_tag==d_tag+4 || a_tag==d_tag+2){
                           
                           //for noPBC run N=84,90.
                           if( (a_tag==60 && d_tag==59) || (a_tag==116 && d_tag==113) || (a_tag==99 && d_tag==94) || (a_tag==103 && d_tag==102) ){
@@ -436,25 +437,6 @@ void FixReaxCCheckFourset::checkForFoursets(){
                             }
                             //printf("**** success! ****\n") ; 
                           }
-
-                          //for level3
-                          /*if( ((a_tag-8)%43==0 && (d_tag-16)%43==0) || ((a_tag-22)%43==0 && (d_tag-18)%43==0) || ((a_tag-23)%43==0 && (d_tag-21)%43==0) || ((a_tag-15)%43==0 && (d_tag-16)%19==0) ){
-                            if(neigh_list[a][b]+neigh_list[c][d]<min_oh_cn){
-                              fourset[num_fourset][0]=fourset[0][0]; //O
-                              fourset[num_fourset][1]=fourset[0][1]; //H
-                              fourset[num_fourset][2]=fourset[0][2]; //N
-                              fourset[num_fourset][3]=fourset[0][3]; //C
-
-                              min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
-                              fourset[0][0]=a_tag; //O
-                              fourset[0][1]=b_tag; //H
-                              fourset[0][2]=c_tag; //N
-                              fourset[0][3]=d_tag; //C
-                              num_fourset++;
-                            }
-                            //printf("**** success! ****\n") ; 
-                          }*/
-
                         }
                       }
                     } 
@@ -473,13 +455,6 @@ void FixReaxCCheckFourset::checkForFoursets(){
   //operate the extra potential
   if(num_fourset!=0){
     int apply_flag=0;
-    
-    //for level3
-    /*apply_flag=reaxc->set_fourset(fourset, 1);
-    if(apply_flag==1){
-      fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
-      fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
-    }*/
 
     //for level1 run
     /*apply_flag=reaxc->set_fourset(fourset, 1);
@@ -510,7 +485,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
     }*/
 
     //extra for noPBC run
-    if(update->ntimestep<1002 || update->ntimestep>11000){
+  if(update->ntimestep<1002 || update->ntimestep>11000){
       if(n_8_min_oh_cn<17){
         apply_flag=reaxc->set_fourset(fourset, 1);
         if(apply_flag==1){
@@ -613,16 +588,17 @@ void FixReaxCCheckFourset::followDistFunc()
   }
   if(update->ntimestep%_nevery!=0)
     return;
-  double x0, x1, x2;
+  /*double x0, x1, x2;
   double j0, j1, j2;
   double del0, del1, del2;
   double dist;
   int num_of_epons=int(atom->nlocal/58.5);
   fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
   for( int i = 0; i < atom->nlocal; ++i ){
-    //if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96 || atom->tag[i]==53 || atom->tag[i]==49 || atom->tag[i]==9|| atom->tag[i]==52|| atom->tag[i]==54|| atom->tag[i]==29|| atom->tag[i]==30|| atom->tag[i]==95|| atom->tag[i]==97){
-    if(atom->tag[i]==84 ||atom->tag[i]==90 || atom->tag[i]==60 || atom->tag[i]==76 || atom->tag[i]==59|| atom->tag[i]==88|| atom->tag[i]==102|| atom->tag[i]==103|| atom->tag[i]==99 || atom->tag[i]==91 || atom->tag[i]==94 ){
-   // if((atom->tag[i]-8)%43==0 ||(atom->tag[i]-16)%43==0  || (atom->tag[i]-22)%43==0 ==60 || (atom->tag[i]-18)%43==0  || (atom->tag[i]-23)%43==0 || (atom->tag[i]-21)%43==0 || (atom->tag[i]-15)%43==0 || (atom->tag[i]-19)%43==0 || (atom->tag[i]-(num_of_epons*43)-8)%31==0 || (atom->tag[i]-(num_of_epons*43)-9)%31==0 ){
+    //level1-no if, level2-first, level2 noPBC-second line
+    if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96 || atom->tag[i]==53 || atom->tag[i]==49 || atom->tag[i]==9|| atom->tag[i]==52|| atom->tag[i]==54|| atom->tag[i]==29|| atom->tag[i]==30|| atom->tag[i]==95|| atom->tag[i]==97){
+    //if(atom->tag[i]==84 ||atom->tag[i]==90 || atom->tag[i]==60 || atom->tag[i]==76 || atom->tag[i]==59|| atom->tag[i]==88|| atom->tag[i]==102|| atom->tag[i]==103|| atom->tag[i]==99 || atom->tag[i]==91 || atom->tag[i]==94 ){
+
       fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
       x0=atom->x[i][0];
       x1=atom->x[i][1];
@@ -636,40 +612,95 @@ void FixReaxCCheckFourset::followDistFunc()
           del1=x1-j1;
           del2=x2-j2;
           
-         /* if( (abs(box_xhi-x0)<3 && abs(box_xlo-j0)<3) || (abs(box_xhi-j0)<3 && abs(box_xlo-x0)<3)){
-            if((atom->tag[i]==102 && atom->tag[j]==103) || (atom->tag[i]==103 && atom->tag[j]==102))
-              printf("\n del 0 is the problen")
+         if( (abs(box_xhi-x0)<=3.2 && abs(box_xlo-j0)<=3.2) || (abs(box_xhi-j0)<=3.2 && abs(box_xlo-x0)<=3.2)){ 
             if(del0>0)
               del0-= box_x_len;
             else
               del0+= box_x_len;
           }
-          if( (abs(box_yhi-x1)<3 && abs(box_ylo-j1)<3) || (abs(box_yhi-j1)<3 && abs(box_ylo-x1)<3)){
+          if( (abs(box_yhi-x1)<=3.2 && abs(box_ylo-j1)<=3.2) || (abs(box_yhi-j1)<=3.2 && abs(box_ylo-x1)<=3.2)){
             if(del1>0)
               del1-= box_y_len;
             else
               del1+= box_y_len;
           }
-          if( (abs(box_zhi-x2)<3 && abs(box_zlo-j2)<3) || (abs(box_zhi-j2)<3 && abs(box_zlo-x2)<3)){
+          if( (abs(box_zhi-x2)<=3.2 && abs(box_zlo-j2)<=3.2) || (abs(box_zhi-j2)<=3.2 && abs(box_zlo-x2)<=3.2)){
             if(del2>0)
               del2-= box_z_len;
             else
               del2+= box_z_len;
-          }*/
+          }
 
           dist=del0*del0+del1*del1+del2*del2;
           dist=sqrt(dist);
           fprintf(fp,"%d %f ",atom->tag[j], dist);
-          if(update->ntimestep>=10 && update->ntimestep<=20 && ((atom->tag[i]==53 && atom->tag[j]==70) || (atom->tag[i]==70 && atom->tag[j]==53)))
-            printf("\n\t atom1 %d: x1 %f y1 %f z1 %f atom2 %d: x2 %f y2 %f z2 %f \ndelx %f dely %f delz %f dist %f\n",atom->tag[i], x0, x1, x2, atom->tag[j], atom->x[j][0], atom->x[j][1], atom->x[j][2], del0, del1, del2, dist);
-          /*if(j==i && update->ntimestep==50){
-            printf(tag i=%d, )
-          }*/
+          //ofek
+         // if(update->ntimestep>=10 && update->ntimestep<=20 && ((atom->tag[i]==53 && atom->tag[j]==70) || (atom->tag[i]==70 && atom->tag[j]==53)))
+          //  printf("\n\t atom1 %d: x1 %f y1 %f z1 %f atom2 %d: x2 %f y2 %f z2 %f \ndelx %f dely %f delz %f dist %f\n",atom->tag[i], x0, x1, x2, atom->tag[j], atom->x[j][0], atom->x[j][1], atom->x[j][2], del0, del1, del2, dist);
+          //if(j==i && update->ntimestep==50){
+          //  printf(tag i=%d, )
+         // }
       }
       fprintf(fp,"\n");
     }
   }
-  fprintf(fp,"#\n");
+  fprintf(fp,"#\n");*/
+
+
+//NEIGH LIST BY FAR NEIGH LIST STRUCT
+  if(fp!=NULL) fprintf(fp,"# Timestep " BIGINT_FORMAT " ",update->ntimestep);
+  int pi1;
+  int i1, i2;
+  int start_i1, end_i1;
+  int type_i1, type_i2, tag_i1, tag_i2;
+  reax_list *far_nbrs, *bond_nbrs;
+  far_neighbor_data *nbr_p_far;
+  bond_data *nbr_p_bond;
+  reax_atom *atom_i1, *atom_i2;
+
+  far_nbrs = (reaxc->lists) + FAR_NBRS;
+  bond_nbrs = (reaxc->lists) + BONDS;
+
+  for( i1 = 0; i1 < reaxc->system->N; ++i1 ) {
+    atom_i1 = &(reaxc->system->my_atoms[i1]);
+    type_i1  = atom_i1->type;
+    tag_i1 = atom_i1->orig_id;
+      
+    if(tag_i1==84 ||tag_i1==90 || tag_i1==60 || tag_i1==76 || tag_i1==59|| tag_i1==88|| tag_i1==102|| tag_i1==103|| tag_i1==99 || tag_i1==91 || tag_i1==94 ){
+    //if(tag_i1==8 ||tag_i1==28 || tag_i1==92 || tag_i1==96 || tag_i1==53 || tag_i1==49 || tag_i1==9|| tag_i1==52|| tag_i1==54|| tag_i1==29|| tag_i1==30|| tag_i1==95|| tag_i1==97){
+      if(fp!=NULL){
+          fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
+      }
+
+      start_i1 = Start_Index(i1, far_nbrs);
+      end_i1   = End_Index(i1, far_nbrs);
+      for( pi1 = start_i1; pi1 < end_i1; ++pi1 ) {
+        nbr_p_far = &( far_nbrs->select.far_nbr_list[pi1] );
+        i2 = nbr_p_far->nbr;
+        atom_i2 = &(reaxc->system->my_atoms[i2]);
+        type_i2= atom_i2->type;
+        tag_i2 = atom_i2->orig_id;
+        if(fp!=NULL){
+            fprintf(fp,"%d %f ",tag_i2, nbr_p_far->d);
+        }
+      }
+      
+      start_i1 = Start_Index(i1, bond_nbrs);
+      end_i1   = End_Index(i1, bond_nbrs);
+      for( pi1 = start_i1; pi1 < end_i1; ++pi1 ) {
+        nbr_p_bond = &( bond_nbrs->select.bond_list[pi1] );
+        i2 = nbr_p_bond->nbr;
+        atom_i2 = &(reaxc->system->my_atoms[i2]);
+        type_i2= atom_i2->type;
+        tag_i2 = atom_i2->orig_id;
+        if(fp!=NULL){
+            fprintf(fp,"%d %f ",tag_i2, nbr_p_bond->d);
+        }
+      }
+   // if(fp!=NULL) fprintf(fp,"\n"); 
+    }
+  }
+  if(fp!=NULL) fprintf(fp,"\n#\n");
 }
 
 /* ---------------------------------------------------------------------- */
