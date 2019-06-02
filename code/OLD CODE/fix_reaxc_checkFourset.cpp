@@ -413,7 +413,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
                           }*/
 
                           //code for level2 run N=8/9
-                         // if(a_tag==d_tag+4 || a_tag==d_tag+2){
+                          //if(a_tag==d_tag+4 || a_tag==d_tag+2){
                           
                           //for noPBC run N=84,90.
                           if( (a_tag==60 && d_tag==59) || (a_tag==116 && d_tag==113) || (a_tag==99 && d_tag==94) || (a_tag==103 && d_tag==102) ){
@@ -436,6 +436,15 @@ void FixReaxCCheckFourset::checkForFoursets(){
                               num_fourset++;
                             }
                             //printf("**** success! ****\n") ; 
+
+                            //random choice
+                            /*fourset[num_fourset][0]=a_tag; //O
+                            fourset[num_fourset][1]=b_tag; //H
+                            fourset[num_fourset][2]=c_tag; //N
+                            fourset[num_fourset][3]=d_tag; //C
+                            num_fourset++;*/
+
+
                           }
                         }
                       }
@@ -451,10 +460,10 @@ void FixReaxCCheckFourset::checkForFoursets(){
   }
  // printf("finish over the neigh list\n");
 
-
+int apply_flag=0;
   //operate the extra potential
-  if(num_fourset!=0){
-    int apply_flag=0;
+  if(num_fourset>0){
+    
 
     //for level1 run
     /*apply_flag=reaxc->set_fourset(fourset, 1);
@@ -472,18 +481,6 @@ void FixReaxCCheckFourset::checkForFoursets(){
     }
   }*/
 
-    /*if(update->ntimestep>5001){
-      if(n_9_min_oh_cn<17){
-        fourset[0][0]=fourset[1][0]; //O
-        fourset[0][1]=fourset[1][1]; //H
-        fourset[0][2]=fourset[1][2]; //N
-        fourset[0][3]=fourset[1][3]; //C
-        apply_flag=reaxc->set_fourset(fourset, 1);
-      }
-      else
-        return;
-    }*/
-
     //extra for noPBC run
   if(update->ntimestep<1002 || update->ntimestep>11000){
       if(n_8_min_oh_cn<17){
@@ -500,36 +497,57 @@ void FixReaxCCheckFourset::checkForFoursets(){
 
   //for level2 run
     if(n_8_min_oh_cn<17 && n_9_min_oh_cn<17){
-      if(n_8_min_oh_cn<n_9_min_oh_cn)
-        apply_flag=reaxc->set_fourset(fourset, 1);
-      else{
+      if(n_8_min_oh_cn>n_9_min_oh_cn){
         fourset[0][0]=fourset[1][0]; //O
         fourset[0][1]=fourset[1][1]; //H
         fourset[0][2]=fourset[1][2]; //N
         fourset[0][3]=fourset[1][3]; //C
-        apply_flag=reaxc->set_fourset(fourset, 1);
-      }
-      if(apply_flag==1){
-        fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
-        fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
-        //fprintf(fp,"1/2- %d %d %d %d ",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
-        //fprintf(fp,"2/2- %d %d %d %d \n",fourset[1][0], fourset[1][1], fourset[1][2], fourset[1][3]);
       }
     }
     else{
-      if(n_8_min_oh_cn<17)
-      apply_flag=reaxc->set_fourset(fourset, 1);
-      else{
+      if(n_9_min_oh_cn<17){
         fourset[0][0]=fourset[1][0]; //O
         fourset[0][1]=fourset[1][1]; //H
         fourset[0][2]=fourset[1][2]; //N
         fourset[0][3]=fourset[1][3]; //C
-        apply_flag=reaxc->set_fourset(fourset, 1);
       }
+    }
+    apply_flag=reaxc->set_fourset(fourset, 1);
       if(apply_flag==1){
         fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
         fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
       }
+    
+    //random choice
+    int rand_num;
+    /*if(num_fourset>1){
+       rand_num= int(rand() % num_fourset + 1) - 1;
+       if(update->ntimestep>11000 && update->ntimestep<11100) rand_num=1;
+      int temp;
+      //if(update->ntimestep>12000 && update->ntimestep<13000) rand_num=0;
+      temp=fourset[0][0];
+      fourset[0][0] = fourset[rand_num][0];
+      fourset[rand_num][0]=temp;
+      temp=fourset[0][1];
+      fourset[0][1] = fourset[rand_num][1];
+      fourset[rand_num][1]=temp;
+      temp=fourset[0][2];
+      fourset[0][2] = fourset[rand_num][2];
+      fourset[rand_num][2]=temp;
+      temp=fourset[0][3];
+      fourset[0][3] = fourset[rand_num][3];
+      fourset[rand_num][3]=temp;
+    }*/
+    /*if(fourset[0][0]==103 && fourset[0][2]==84 && fourset[0][1]==88 && fourset[0][3]==102){
+      if(update->ntimestep%100 == 0)
+      printf("\nnum foursets %d\n",num_fourset);
+      return;
+    }*/
+    apply_flag=reaxc->set_fourset(fourset, 1);
+    if(apply_flag==1){
+      printf("\nrand_num %d\n",rand_num);
+      fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
+      fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
     }
 
   }
@@ -562,7 +580,8 @@ void FixReaxCCheckFourset::checkForFoursets(){
     }*/
       
     //print the foursets
-    /*if(update->ntimestep<1){
+    //f(update->ntimestep<1){
+    if(apply_flag==1){
       for(int i=0; i<num_fourset;i++){
         printf("fourset #%d is: ", i);
         for(int j=0; j<4;j++)
@@ -570,7 +589,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
         printf("\n");
       }
       printf("\n");
-    }*/
+    }
   
 
   //printf("\n\n==========finish checkFourset func=============\n");
@@ -666,6 +685,7 @@ void FixReaxCCheckFourset::followDistFunc()
     type_i1  = atom_i1->type;
     tag_i1 = atom_i1->orig_id;
       
+    //level2
     if(tag_i1==84 ||tag_i1==90 || tag_i1==60 || tag_i1==76 || tag_i1==59|| tag_i1==88|| tag_i1==102|| tag_i1==103|| tag_i1==99 || tag_i1==91 || tag_i1==94 ){
     //if(tag_i1==8 ||tag_i1==28 || tag_i1==92 || tag_i1==96 || tag_i1==53 || tag_i1==49 || tag_i1==9|| tag_i1==52|| tag_i1==54|| tag_i1==29|| tag_i1==30|| tag_i1==95|| tag_i1==97){
       if(fp!=NULL){

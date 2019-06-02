@@ -144,9 +144,6 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
     error->one(FLERR,str);
   }
 
-  
-
-
 
   //printf("\n~~~out constructor~~~\n\n");
 }
@@ -1114,35 +1111,71 @@ double PairReaxC::compute_BB(){
 }
 /* ---------------------------------------------------------------------- */
 double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
-    //printf("\n~~~in compute_BB_pair~~~");
-    int i,j,itype, jtype;
-    double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq, rij;
-    double **x = atom->x;
-    double **f = atom->f;
-    int *type = atom->type;
+  //printf("\n~~~in compute_BB_pair~~~");
+  int i,j,itype, jtype, pk, k;
+  double fpair, rij=0;
+  double **x = atom->x;
+  double **f = atom->f;
+  int *type = atom->type;
+  int cal_dist_flag=0;
 
-    i=tag_to_i[i_tag-1];
+  double d_sqr;
+  i=tag_to_i[i_tag-1];
+  itype = type[i];
+  j=tag_to_i[j_tag-1];
+  jtype = type[j];
 
-    xtmp = x[i][0];
-    ytmp = x[i][1];
-    ztmp = x[i][2];
-    itype = type[i];
+  rvec dvec, xi, xj;
 
-    j=tag_to_i[j_tag-1];
-    jtype = type[j];
+  bond_data *bo_ij;
+  for( pk = Start_Index(i, lists+BONDS); pk < End_Index(i, lists+BONDS); ++pk ) {
+      bo_ij = &( (lists+BONDS)->select.bond_list[pk] );
+      k = bo_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=1;
+        rij=bo_ij->d;
+        dvec[0]=bo_ij->dvec[0];
+        dvec[1]=bo_ij->dvec[1];
+        dvec[2]=bo_ij->dvec[2];
+        break;
+      }
+  }
 
-    delx = xtmp - x[j][0];
-    dely = ytmp - x[j][1];
-    delz = ztmp - x[j][2];
-      
-    rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-    rij=sqrt(rsq);
+  if(rij==0){
+    far_neighbor_data *nbr_ij;
+    for( pk = Start_Index(i, lists+FAR_NBRS); pk < End_Index(i, lists+FAR_NBRS); ++pk ) {
+      nbr_ij = &( (lists+FAR_NBRS)->select.far_nbr_list[pk] );
+      k = nbr_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=2;
+        rij=nbr_ij->d;
+        dvec[0]=nbr_ij->dvec[0];
+        dvec[1]=nbr_ij->dvec[1];
+        dvec[2]=nbr_ij->dvec[2];
+        break;
+      }
+    }
+  }
+
+  if(rij==0){
+    xi[0]=x[i][0];
+    xi[1]=x[i][1];
+    xi[2]=x[i][2];
+    xj[0]=x[j][0];
+    xj[1]=x[j][1];
+    xj[2]=x[j][2];
+    get_distance(xj, xi, &d_sqr, &dvec );
+    rij=sqrt(d_sqr);
+    cal_dist_flag=3;
+  }
     
     //FOR DEBUGGING
     //printf("count_bb_timesteps=%d",count_bb_timesteps);
     //printf("\natom i: tag=%d type=%d, atom j: tag=%d type=%d, rsq=%f rij=%f, r12=%f",i_tag, itype, j_tag, jtype, rsq,rij, wanted_dist[itype][jtype]);
     //print the distance at the first 2 timesteps and at the last 2 timesteps
-    if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
+    if(count_bb_timesteps%1000==0){
+      printf("\ncal_dist_flag=%d",cal_dist_flag);
+    //if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
       //|| count_bb_timesteps%1000==0
       if( (itype==1 && jtype==4))
         printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
@@ -1165,13 +1198,13 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     fpair=single_BB(i_tag, j_tag, itype, jtype, rij);
     
     //calculate the F force vector for atom i
-    f_fourset[i_tag-1][0] += (delx*fpair)/rij;
-    f_fourset[i_tag-1][1] += (dely*fpair)/rij;
-    f_fourset[i_tag-1][2] += (delz*fpair)/rij;
+    f_fourset[i_tag-1][0] -= (dvec[0]*fpair)/rij;
+    f_fourset[i_tag-1][1] -= (dvec[1]*fpair)/rij;
+    f_fourset[i_tag-1][2] -= (dvec[2]*fpair)/rij;
     //calculate the F force vector for atom j       
-    f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
-    f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
-    f_fourset[j_tag-1][2] -= (delz*fpair)/rij;
+    f_fourset[j_tag-1][0] += (dvec[0]*fpair)/rij;
+    f_fourset[j_tag-1][1] += (dvec[1]*fpair)/rij;
+    f_fourset[j_tag-1][2] += (dvec[2]*fpair)/rij;
     
     //calculate and return the E (energy)
     double r=rij-wanted_dist[itype][jtype];
@@ -1194,11 +1227,11 @@ double PairReaxC::single_BB(int i, int j, int itype, int jtype, double rsq)
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
   
   //FOR DEBUGGING
-  /*if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+  if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
     printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
-  }*/
+  }
   //printf("\n~~~out single_BB~~~\n\n");
   
   return force;
