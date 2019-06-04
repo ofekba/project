@@ -132,7 +132,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   nmax = 0;
   
   //mine
-  f_fourset=NULL;
+  f_fourset=NULL; //ofek no need
   fourset=NULL;
   num_fourset=0;
   count_bb_timesteps=0;
@@ -160,6 +160,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
 
 PairReaxC::~PairReaxC()
 {
+  printf("\n\n*******out PairReaxC*****\n\n");
   if (copymode) return;
 
   if (fix_reax) modify->delete_fix(fix_id);
@@ -967,7 +968,6 @@ void PairReaxC::set_extra_potential_parameters(){
 //TODO: add file format checker!!!!!!!!!!
 
 //FOR EXTRA POTENTIAL PARAMETERS
-  if (!allocated) allocate();
   if(parameters_fp!=NULL) return;
 
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
@@ -1092,40 +1092,76 @@ double PairReaxC::compute_BB(){
 /* ---------------------------------------------------------------------- */
 double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   
-  int i,j,itype, jtype;
-  double xtmp,ytmp,ztmp,delx,dely,delz,fpair, rsq, rij;
+  int i,j,itype,jtype,pk,k;
+  double fpair, rij=0;
   double **x = atom->x;
   double **f = atom->f;
   int *type = atom->type;
-
-
+  int cal_dist_flag=0;
+  double d_sqr;
+  rvec dvec, xi, xj;
   
   i=tag_to_i(i_tag);
   if(i==-1) return -1;
   if(atom->tag[i]!=i_tag) return -1;
-
-  xtmp = x[i][0];
-  ytmp = x[i][1];
-  ztmp = x[i][2];
   itype = type[i];
-
+  
   j=tag_to_i(j_tag);
   if(j==-1) return -1;
   if(atom->tag[j]!=j_tag) return -1;
   jtype = type[j];
 
-  delx = xtmp - x[j][0];
-  dely = ytmp - x[j][1];
-  delz = ztmp - x[j][2];
-      
-  rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-  rij=sqrt(rsq);
+  bond_data *bo_ij;
+  for( pk = Start_Index(i, lists+BONDS); pk < End_Index(i, lists+BONDS); ++pk ) {
+      bo_ij = &( (lists+BONDS)->select.bond_list[pk] );
+      k = bo_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=1;
+        rij=bo_ij->d;
+        dvec[0]=bo_ij->dvec[0];
+        dvec[1]=bo_ij->dvec[1];
+        dvec[2]=bo_ij->dvec[2];
+        break;
+      }
+  }
+
+  if(rij==0){
+    far_neighbor_data *nbr_ij;
+    for( pk = Start_Index(i, lists+FAR_NBRS); pk < End_Index(i, lists+FAR_NBRS); ++pk ) {
+      nbr_ij = &( (lists+FAR_NBRS)->select.far_nbr_list[pk] );
+      k = nbr_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=2;
+        rij=nbr_ij->d;
+        dvec[0]=nbr_ij->dvec[0];
+        dvec[1]=nbr_ij->dvec[1];
+        dvec[2]=nbr_ij->dvec[2];
+        break;
+      }
+    }
+  }
+  
+  if(rij==0){
+    xi[0]=x[i][0];
+    xi[1]=x[i][1];
+    xi[2]=x[i][2];
+    xj[0]=x[j][0];
+    xj[1]=x[j][1];
+    xj[2]=x[j][2];
+    get_distance(xj, xi, &d_sqr, &dvec );
+    rij=sqrt(d_sqr);
+    cal_dist_flag=3;
+  }
+  int sign;
+  if((x[i][0]-x[j][0]) * dvec[0] > 0)  sign=-1;
+  else  sign=1;
     
   //OFEK
   //FOR DEBUGGING
   //print the distance at the first 2 timesteps and at the last 2 timesteps
   //if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
   if(count_bb_timesteps%1000==0 ){
+  	printf("\ncal_dist_flag=%d",cal_dist_flag);
     if( (itype==1 && jtype==4))
       printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
     else if( (itype==4 && jtype==1))
@@ -1144,8 +1180,6 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
       printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
   }
     
-  
-  
   fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
     
   /*//calculate the F force vector for atom i
@@ -1157,13 +1191,13 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
   f_fourset[j_tag-1][2] -= (delz*fpair)/rij;*/
 
-  workspace->f[i][0] += (delx*fpair)/rij;
-  workspace->f[i][1] += (dely*fpair)/rij;
-  workspace->f[i][2] += (delz*fpair)/rij;
+  workspace->f[i][0] -= sign*(dvec[0]*fpair)/rij;
+  workspace->f[i][1] -= sign*(dvec[1]*fpair)/rij;
+  workspace->f[i][2] -= sign*(dvec[2]*fpair)/rij;
 
-  workspace->f[j][0] -= (delx*fpair)/rij;
-  workspace->f[j][1] -= (dely*fpair)/rij;
-  workspace->f[j][2] -= (delz*fpair)/rij;
+  workspace->f[j][0] += sign*(dvec[0]*fpair)/rij;
+  workspace->f[j][1] += sign*(dvec[1]*fpair)/rij;
+  workspace->f[j][2] += sign*(dvec[2]*fpair)/rij;
     
   //calculate and return the E (energy)
   double r=rij-wanted_dist[itype][jtype];

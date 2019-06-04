@@ -96,7 +96,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
 
 FixReaxCCheckFourset::~FixReaxCCheckFourset()
 {
-  //printf("\n****in destructor*****\n");
+  printf("\n****in destructor FixReaxCCheckFourset*****\n");
   MPI_Comm_rank(world,&me);
   destroy();
   if (me == 0) fclose(fp);
@@ -296,7 +296,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
                   case 15: _optional_c_tag=19+43*_x;
                     break;
                 }
-                if(atom_i4->orig_id != _optional_c_tag) break;
+
+                if(atom_i4->orig_id != _optional_c_tag) continue;
 
                 start_c = Start_Index(_c, bond_nbrs);
                 end_c = End_Index(_c, bond_nbrs);
@@ -363,6 +364,9 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       int apply_flag = reaxc->set_fourset(fourset, 1);
       //OFEK
       if(apply_flag==1){
+        for(int nn=0; nn<num_fourset; nn++)
+          printf("fourset #%d: %d %d %d %d\n",nn, fourset[nn][0], fourset[nn][1], fourset[nn][2], fourset[nn][3]);
+        printf("\n");
         printf("\nstart operate the potential\n");
         fprintf (fp,"\n# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
         fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
