@@ -77,18 +77,24 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
 
       if (fp == NULL) {
         char str[128];
-        snprintf(str,128,"Cannot open fix reax/c/bonds file %s",arg[4]);
+        snprintf(str,128,"Cannot open fix reax/c/checkFourset file %s",arg[4]);
         error->one(FLERR,str);
       }
     }
 
   if (atom->tag_consecutive() == 0)
-    error->all(FLERR,"Atom IDs must be consecutive for fix reax/c bonds");
+    error->all(FLERR,"Atom IDs must be consecutive for fix reax/c/checkFourset");
 
   fourset = NULL;
+  o_c_pair_tags = NULL;
+  n_tags=0;
 
   allocate();
   //printf("\n*********FixReaxCCheckFourset:\tout constructor***********\n");
+  //ofek
+  int _set_flag=set_mol_pattern();
+  if(_set_flag==0) printf("\nsuccess define molecole file pattern\n");
+  else printf("\nerror define molecole file pattern\n");
 
 }
 
@@ -190,6 +196,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   const int TYPE_H = 1;
   const int TYPE_O = 2;
   const int TYPE_N = 3;
+  const int EPON_SIZE = 43;
+  const int DETDA_SIZE = 31;
   
   //NEIGH LIST BY FAR NEIGH LIST STRUCT
   int pi1, pi2, pi3, pi4;
@@ -218,11 +226,19 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     tag_i1 = atom_i1->orig_id;
     
     if(fp!=NULL){
-      if((tag_i1-8)%43==0 ||(tag_i1-16)%43==0  || (tag_i1-22)%43==0 ==60 || (tag_i1-18)%43==0  || (tag_i1-23)%43==0 || (tag_i1-21)%43==0 || (tag_i1-15)%43==0 || (tag_i1-19)%43==0 || (tag_i1-(num_of_epons*43)-8)%31==0 || (tag_i1-(num_of_epons*43)-9)%31==0 ){
-        fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
+      // if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
+      
+      int writing_flag=0;
+      for(int wf=0; wf<4; wf++){
+        if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
+          writing_flag=1;
       }
+      if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
+        writing_flag=1;
+      if(writing_flag==1)
+        fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
     }
-
+   
 
     start_o = Start_Index(_o, far_nbrs);
     end_o   = End_Index(_o, far_nbrs);
@@ -235,12 +251,22 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       atom_i2 = &(reaxc->system->my_atoms[_h]);
       type_i2= atom_i2->type;
       tag_i2 = atom_i2->orig_id;
+
       if(fp!=NULL && tag_i2>0){
-        if((tag_i1-8)%43==0 ||(tag_i1-16)%43==0  || (tag_i1-22)%43==0 ==60 || (tag_i1-18)%43==0  || (tag_i1-23)%43==0 || (tag_i1-21)%43==0 || (tag_i1-15)%43==0 || (tag_i1-19)%43==0 || (tag_i1-(num_of_epons*43)-8)%31==0 || (tag_i1-(num_of_epons*43)-9)%31==0 ){
-          fprintf(fp,"%d %f ",tag_i2, nbr_p_12->d);
+        // if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
+        
+        int writing_flag=0;
+        for(int wf=0; wf<4; wf++){
+          if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
+            writing_flag=1;
         }
+          if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
+            writing_flag=1;
+          if(writing_flag==1)
+            fprintf(fp,"%d %f ",tag_i2, nbr_p_12->d);
       }
     }
+    
 
     for( pi1 = start_o; pi1 < end_o; ++pi1 ) {
       nbr_p_oh = &( far_nbrs->select.far_nbr_list[pi1] );
@@ -250,7 +276,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       tag_i2 = atom_i2->orig_id;
 
       if(fp!=NULL){
-        if((tag_i1-8)%43==0 ||(tag_i1-16)%43==0  || (tag_i1-22)%43==0 ==60 || (tag_i1-18)%43==0  || (tag_i1-23)%43==0 || (tag_i1-21)%43==0 || (tag_i1-15)%43==0 || (tag_i1-19)%43==0 || (tag_i1-(num_of_epons*43)-8)%31==0 || (tag_i1-(num_of_epons*43)-9)%31==0 ){
+        if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
           fprintf(fp,"%d %f ",tag_i2, nbr_p_oh->d);
         }
       }
@@ -282,18 +308,18 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
                 //printf("*****cond 3 OK doki*****\n");
 
                 //options for o-c
-                //o= 22+43x c=18+43x || o= 8+43x c=16+43x || o= 23+43x c=21+43x || o= 15+43x c=19+43x
-                int _re=atom_i1->orig_id%43;
-                int _x=int( (atom_i1->orig_id - _re) / 43 );
+                //o= 22+EPON_SIZEx c=18+EPON_SIZEx || o= 8+EPON_SIZEx c=16+EPON_SIZEx || o= 23+EPON_SIZEx c=21+EPON_SIZEx || o= 15+EPON_SIZEx c=19+EPON_SIZEx
+                int _re=atom_i1->orig_id%EPON_SIZE;
+                int _x=int( (atom_i1->orig_id - _re) / EPON_SIZE );
                 int _optional_c_tag=0;
                 switch(_re) {
-                  case 22: _optional_c_tag=18+43*_x;
+                  case 22: _optional_c_tag=18+EPON_SIZE*_x;
                     break;
-                  case 8: _optional_c_tag=16+43*_x;
+                  case 8: _optional_c_tag=16+EPON_SIZE*_x;
                     break;
-                  case 23: _optional_c_tag=21+43*_x;
+                  case 23: _optional_c_tag=21+EPON_SIZE*_x;
                     break;
-                  case 15: _optional_c_tag=19+43*_x;
+                  case 15: _optional_c_tag=19+EPON_SIZE*_x;
                     break;
                 }
 
@@ -361,6 +387,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         
       }*/
 
+
       int apply_flag = reaxc->set_fourset(fourset, 1);
       //OFEK
       if(apply_flag==1){
@@ -393,6 +420,8 @@ int FixReaxCCheckFourset::nint(const double &r)
 void FixReaxCCheckFourset::destroy()
 {
   memory->destroy(fourset);
+  memory->destroy(o_c_pair_tags);
+  memory->destroy(n_tags);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -401,6 +430,8 @@ void FixReaxCCheckFourset::allocate()
 {
   //printf("\n*********FixReaxCCheckFourset:\tin allocate***********\n");
   memory->create(fourset,atom->nlocal,4,"reax/c/checkFourset:fourset");//***************
+  memory->create(o_c_pair_tags,4,2,"reax/c/checkFourset:o_c_pair_tags");//***************
+  memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
   //printf("\n*********FixReaxCCheckFourset:\tout allocate***********\n");
 }
 
@@ -411,8 +442,71 @@ double FixReaxCCheckFourset::memory_usage()
   double bytes;
   //bytes = 3.0*nmax*sizeof(double);//??
   bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
+  bytes += 1.0*4*2*sizeof(int);//o_c_pair_tags
+  bytes += 1.0*2*sizeof(int);//n_tags
 
   return bytes;
 }
+/* ---------------------------------------------------------------------- */
+//return 0 for success. else, return -1.
+int FixReaxCCheckFourset::set_mol_pattern(){
+  //printf("\nPairReaxC:; in set_extra_potential_parameters\n");
 
+//ofek
+ FILE* parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
+  if (parameters_fp == NULL) {
+    char str[128];
+    snprintf(str,128,"Cannot open fix reax/c/checkFourset file Extra_Potential_Parameters.txt");
+    error->one(FLERR,str);
+    return -1;
+  }
+  char buff[1000];
+  fread(buff, 1000, 1, parameters_fp);
+  char *token = strtok(buff, "\n");
+  int finish_flag=0;
+  int temp;
 
+  for(int i=0; i<4; i++){
+    o_c_pair_tags[i][0]=o_c_pair_tags[i][1]=0;
+  }
+  for(int i=0; i<2; i++){
+    n_tags[i]=0;
+  }
+
+  while(token){
+    if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
+      for(int i=0; i<4; i++){
+        for(int j=0; j<2; j++){
+          if(j==0) token = strtok(NULL, " ");
+          else token = strtok(NULL, "\n");
+          sscanf(token, "%d", &temp);
+          o_c_pair_tags[i][j]=temp;
+        }
+      }
+      finish_flag++;  
+    }
+    if(strcmp(token, "n tags")==0 || strcmp(token, "N tags")==0){
+      token = strtok(NULL, " ");
+      sscanf(token, "%d", &temp);
+      n_tags[0]=temp;
+      token = strtok(NULL, "\n");
+      sscanf(token, "%d", &temp);
+      n_tags[1]=temp;
+      finish_flag++;
+    }
+    if(finish_flag==2){
+      for(int i=0; i<4; i++){
+        printf("\nO-C pair %d %d\n",o_c_pair_tags[i][0],o_c_pair_tags[i][1]);
+      }
+      printf("\nn_tag %d %d\n",n_tags[0],n_tags[1]);
+      fclose(parameters_fp);
+      return 0;
+    }
+    token = strtok(NULL, "\n");
+  }
+  if(finish_flag==0){
+    fclose(parameters_fp);
+    printf("\n not finish\n");
+    return -1;
+  }
+}

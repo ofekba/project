@@ -557,8 +557,8 @@ void PairReaxC::compute(int eflag, int vflag)
 {
   double evdwl,ecoul;
   double t_start, t_end;
-
-  set_extra_potential_parameters(); 
+//ofek
+  //set_extra_potential_parameters(); 
 
   // communicate num_bonds once every reneighboring
   // 2 num arrays stored by fix, grab ptr to them
@@ -566,6 +566,7 @@ void PairReaxC::compute(int eflag, int vflag)
   if (neighbor->ago == 0) comm->forward_comm_fix(fix_reax);
   int *num_bonds = fix_reax->num_bonds;
   int *num_hbonds = fix_reax->num_hbonds;
+
 
   evdwl = ecoul = 0.0;
   ev_init(eflag,vflag);
@@ -857,6 +858,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
       }
   }
+
   //printf("\nadding the force");
   for( int i = 0; i < system->N; ++i ) {
     system->my_atoms[i].f[0] = workspace->f[i][0];
@@ -959,22 +961,17 @@ void PairReaxC::FindBond()
 }
 
 /* ---------------------------------------------------------------------- */
-
-void PairReaxC::set_extra_potential_parameters(){
+//return 0 for success. else, return -1.
+int PairReaxC::set_extra_potential_parameters(){
   //printf("\nPairReaxC:; in set_extra_potential_parameters\n");
 
 //ofek
-
-//TODO: add file format checker!!!!!!!!!!
-
-//FOR EXTRA POTENTIAL PARAMETERS
-  if(parameters_fp!=NULL) return;
-
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
   if (parameters_fp == NULL) {
     char str[128];
     snprintf(str,128,"Cannot open fix reax/c/bonds file Extra_Potential_Parameters.txt");
     error->one(FLERR,str);
+    return -1;
   }
   char buff[1000];
   fread(buff, 1000, 1, parameters_fp);
@@ -982,8 +979,17 @@ void PairReaxC::set_extra_potential_parameters(){
   char *token = strtok(buff, "\n");
   int finish_flag=0;
   while(token){
-    if(strcmp(token, "max_iterarions_of_potential")==0){
+    //printf("\ntoken %s\n", token);
+    if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
+      for(int i=0; i<4; i++)
+        token = strtok(NULL, "\n");
+    }
+    else if(strcmp(token, "n tags")==0 || strcmp(token, "N tags")==0){
+        token = strtok(NULL, "\n");
+    }
+    else if(strcmp(token, "max_iterarions_of_potential")==0){
       token = strtok(NULL, "\n");
+      //printf("\n max iter token= %s\n",token);
       sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
     }
     else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
@@ -1019,17 +1025,22 @@ void PairReaxC::set_extra_potential_parameters(){
       }
       finish_flag=1;
     }
+    else{
+      printf("\n format error\n");
+      return -1;
+    }
     if(finish_flag==1){
-      /* printf("\nfinish set_extra_potential_parameters\n");
-       break;*/
       fclose(parameters_fp);
-      //printf("\nPairReaxC:; out set_extra_potential_parameters\n");
-      return;
+      return 0;
     }
     token = strtok(NULL, "\n");
   }
-  fclose(parameters_fp);
-  printf("\nPairReaxC:; iout set_extra_potential_parameters\n");
+
+  if(finish_flag==0){
+    fclose(parameters_fp);
+    printf("\n not finish\n");
+    return -1;
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1038,10 +1049,21 @@ void PairReaxC::set_extra_potential_parameters(){
 int PairReaxC::set_fourset(int **foursets, int num_foursets){
   if(count_bb_timesteps>0 || flag_bb==1)
     return 0;
-  if(update->ntimestep<1000)
+  if(update->ntimestep<10000){
+    //printf("\ntoo early\n");
     return 0;
+  }
+
   if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS)
+  {
+    //printf("\ntoo late\n");
     return 0;
+  }
+  int set_params_flag=set_extra_potential_parameters();
+  if(set_params_flag==-1){
+    printf("\nerror in set_extra_potential_parameters\n");
+    return 0;
+  }
   //OFEK
   printf("\n~~~in set_fourset timestep %d~~~\n", update->ntimestep);
   for(int i=0; i<num_foursets; i++){
@@ -1219,11 +1241,12 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
   
   //FOR DEBUGGING
   //OFEK
- /* if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+ // if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+  if(count_bb_timesteps%1000==0){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
     printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
-  }*/
+  }
   
   return force;
 }

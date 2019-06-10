@@ -39,8 +39,11 @@ class FixReaxCCheckFourset : public Fix {
  protected:
   int me, nprocs, nmax, ntypes, maxsize;
   int **fourset; //list of fourset to appky tha potential on
+  int **o_c_pair_tags;
+  int *n_tags;
   int num_fourset; //0 if the list is empty. else, number of fourset
   FILE *fp;
+  int set_mol_pattern();
 
   void allocate();
   void destroy();
