@@ -32,14 +32,14 @@ def dist_graph():
 	if ln[1] == "totalAtomNum":
 		total_atomNum=int(ln[2])
 		print("total_atomNum ", total_atomNum)
-	total_atomNum=234
 	
 	
+	neverty_fix_check=10
 	ln=text_list[2].split(" ")
 	if ln[1] == "fix_nevery":
 		neverty_fix_check=int(ln[2])
 		print("neverty_fix_check ", neverty_fix_check)
-	neverty_fix_check=10
+
 
 	size=int(total_timesteps/neverty_fix_check) + 1
 
@@ -109,21 +109,25 @@ def dist_graph():
 			temp_dist=arr[j][c_list[i]-1][o_list[i]-1]
 			if temp_dist==0:
 				temp_dist=arr[j][o_list[i]-1][c_list[i]-1]
+			if temp_dist==0: temp_dist=10
 			axis_y[index].append(temp_dist) #C-O dist
 			
 			temp_dist=arr[j][o_list[i]-1][h_list[i]-1]
 			if temp_dist==0:
 				temp_dist=arr[j][h_list[i]-1][o_list[i]-1]
+			if temp_dist==0: temp_dist=10
 			axis_y[index+1].append(temp_dist) #O-H dist
 			
 			temp_dist=arr[j][n_list[i]-1][h_list[i]-1]
 			if temp_dist==0:
 				temp_dist=arr[j][h_list[i]-1][n_list[i]-1]
+			if temp_dist==0: temp_dist=10
 			axis_y[index+2].append(temp_dist) #N-H dist
 			
 			temp_dist=arr[j][n_list[i]-1][c_list[i]-1]
 			if temp_dist==0:
 				temp_dist=arr[j][c_list[i]-1][n_list[i]-1]
+			if temp_dist==0: temp_dist=10
 			axis_y[index+3].append(temp_dist) #N-C dist
 			
 
