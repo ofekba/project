@@ -187,7 +187,8 @@ void PairReaxCOMP::compute(int eflag, int vflag)
   double evdwl,ecoul;
   double t_start, t_end;
 
-  set_extra_potential_parameters();
+  //ofek
+  //set_extra_potential_parameters();
 
   // communicate num_bonds once every reneighboring
   // 2 num arrays stored by fix, grab ptr to them
@@ -631,6 +632,8 @@ void PairReaxCOMP::read_reax_forces(int /* vflag */)
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }
+
+
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(static) default(shared)
 #endif
@@ -677,4 +680,155 @@ void PairReaxCOMP::FindBond()
       }
     }
   }
+}
+
+/* ---------------------------------------------------------------------- */
+
+double PairReaxCOMP::compute_BB(){
+  //printf("\nin computebb ()\n");
+  for (int i = 0; i < atom->nlocal; i++) {
+    for (int j = 0; j < 3; j++) {
+      f_fourset[i][j] = 0;
+    }
+  }
+  double e=0; //the amount of the additional energy
+
+  for(int k=0; k<num_fourset; k++){
+    e+=compute_BB_pair(fourset[k][0], fourset[k][1]); //O-H
+    if(e==-1) return-1;
+    e+=compute_BB_pair(fourset[k][0], fourset[k][3]); //O-C
+    if(e==-1) return-1;
+    e+=compute_BB_pair(fourset[k][2], fourset[k][3]); //N-C
+    if(e==-1) return-1;
+    //e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
+    //if(e==-1) return-1;
+  }
+
+  //printf("\nout computebb ()\n");
+ return e;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
+ // if(update->ntimestep>1000 || update->ntimestep<1010) printf("\n\n\nin PairReaxCOMP::compute_BB_pair\n\n\n");
+  
+  int i,j,itype,jtype,pk,k;
+  double fpair, rij=0;
+  double **x = atom->x;
+  double **f = atom->f;
+  int *type = atom->type;
+  int cal_dist_flag=0;
+  double d_sqr;
+  rvec dvec, xi, xj;
+  
+  i=tag_to_i(i_tag);
+  if(i==-1) return -1;
+  if(atom->tag[i]!=i_tag) return -1;
+  itype = type[i];
+  
+  j=tag_to_i(j_tag);
+  if(j==-1) return -1;
+  if(atom->tag[j]!=j_tag) return -1;
+  jtype = type[j];
+
+  bond_data *bo_ij;
+  #if defined(_OPENMP)
+  #pragma omp parallel for schedule(static) default(shared)
+  #endif
+  for( pk = Start_Index(i, lists+BONDS); pk < End_Index(i, lists+BONDS); ++pk ) {
+      bo_ij = &( (lists+BONDS)->select.bond_list[pk] );
+      k = bo_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=1;
+        rij=bo_ij->d;
+        dvec[0]=bo_ij->dvec[0];
+        dvec[1]=bo_ij->dvec[1];
+        dvec[2]=bo_ij->dvec[2];
+       // break;
+      }
+  }
+
+  if(rij==0){
+    far_neighbor_data *nbr_ij;
+  #if defined(_OPENMP)
+  #pragma omp parallel for schedule(static) default(shared)
+  #endif
+    for( pk = Start_Index(i, lists+FAR_NBRS); pk < End_Index(i, lists+FAR_NBRS); ++pk ) {
+      nbr_ij = &( (lists+FAR_NBRS)->select.far_nbr_list[pk] );
+      k = nbr_ij->nbr;
+      if (j == k || atom->tag[k] == j_tag){
+        cal_dist_flag=2;
+        rij=nbr_ij->d;
+        dvec[0]=nbr_ij->dvec[0];
+        dvec[1]=nbr_ij->dvec[1];
+        dvec[2]=nbr_ij->dvec[2];
+       // break;
+      }
+    }
+  }
+  
+  if(rij==0){
+    xi[0]=x[i][0];
+    xi[1]=x[i][1];
+    xi[2]=x[i][2];
+    xj[0]=x[j][0];
+    xj[1]=x[j][1];
+    xj[2]=x[j][2];
+    get_distance(xj, xi, &d_sqr, &dvec );
+    rij=sqrt(d_sqr);
+    cal_dist_flag=3;
+  }
+  int sign;
+  if((x[i][0]-x[j][0]) * dvec[0] > 0)  sign=-1;
+  else  sign=1;
+    
+  //OFEK
+  //FOR DEBUGGING
+  //print the distance at the first 2 timesteps and at the last 2 timesteps
+  //if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
+  if(count_bb_timesteps%1000==0 ){
+  	printf("\ncal_dist_flag=%d",cal_dist_flag);
+    if( (itype==1 && jtype==4))
+      printf("\nThe distance between C (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==4 && jtype==1))
+      printf("\nThe distance between N (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==3 && jtype==2))
+      printf("\nThe distance between O (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==2 && jtype==3))
+      printf("\nThe distance between H (TAG=%d) ,O(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==3 && jtype==1))
+      printf("\nThe distance between O (TAG=%d) ,C(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==1 && jtype==3))
+      printf("\nThe distance between C (TAG=%d) ,O(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==2 && jtype==4))
+      printf("\nThe distance between H (TAG=%d) ,N(TAG=%d) =%f\n", i_tag, j_tag, rij);
+    else if( (itype==4 && jtype==2))
+      printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
+  }
+    
+  fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
+    
+  /*//calculate the F force vector for atom i
+  f_fourset[i_tag-1][0] += (delx*fpair)/rij;
+  f_fourset[i_tag-1][1] += (dely*fpair)/rij;
+  f_fourset[i_tag-1][2] += (delz*fpair)/rij;
+  //calculate the F force vector for atom j       
+  f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
+  f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
+  f_fourset[j_tag-1][2] -= (delz*fpair)/rij;*/
+
+  workspace->f[i][0] -= sign*(dvec[0]*fpair)/rij;
+  workspace->f[i][1] -= sign*(dvec[1]*fpair)/rij;
+  workspace->f[i][2] -= sign*(dvec[2]*fpair)/rij;
+
+  workspace->f[j][0] += sign*(dvec[0]*fpair)/rij;
+  workspace->f[j][1] += sign*(dvec[1]*fpair)/rij;
+  workspace->f[j][2] += sign*(dvec[2]*fpair)/rij;
+    
+  //calculate and return the E (energy)
+  double r=rij-wanted_dist[itype][jtype];
+  double e=F1[itype][jtype] * (1 - exp( -F2[itype][jtype] * r * r ));
+  return e;
+
 }

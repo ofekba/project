@@ -32,6 +32,8 @@ class PairReaxCOMP : public PairReaxC, public ThrOMP {
   ~PairReaxCOMP();
   virtual void compute(int, int);
   virtual void init_style();
+  virtual double compute_BB();
+  virtual double compute_BB_pair(int, int);
 
   inline FixOMP *getFixOMP() {
         return fix;
