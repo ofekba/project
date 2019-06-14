@@ -18,6 +18,7 @@ def remove(string):
 
 def species_reader():
 	i=0
+	num_species=4
 	species_dict =	{
 	  "C11H18N2": 0,
 	  "C19H20O4": 1,
@@ -45,16 +46,22 @@ def species_reader():
 		No_Specs.append(ln[2])
 		for j in range(len(species_list)):
 			x = species_dict.get(species_list[j])
-			if x is not None:
+			if x is None:
+				species_dict.update( {species_list[j] : num_species} )
+				trucker.append([])
+				trucker[num_species]=[0 for ns in range(len(time_Step)-1)]
+				trucker[num_species].append(ln[3+j])
+				num_species+=1
+			else:
 				x=int(x)
 				trucker[x].append(ln[3+j])
-		for j in range(4):
+		for j in range(len(trucker)):
 			if len(trucker[j])<len(time_Step): trucker[j].append(0)
 		i+=1
-	make_graph(time_Step, trucker[0], xlabel="time_Step", ylabel="C11H18N2", title="Graph")
-	make_graph(time_Step, trucker[1], xlabel="time_Step", ylabel="C19H20O4", title="Graph")
-	make_graph(time_Step, trucker[2], xlabel="time_Step", ylabel="C30H38O4N2", title="Graph")
-	make_graph(time_Step, trucker[3], xlabel="time_Step", ylabel="C49H58O8N2", title="Graph")
+
+		
+	for i in range(len(trucker)):
+		make_graph(time_Step, trucker[i], xlabel="time_Step", ylabel=list(species_dict.keys())[i], title="Graph")
 		
 			
 		
