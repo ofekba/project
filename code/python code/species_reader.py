@@ -8,7 +8,8 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.plot(axis_x,axis_y)
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-	plt.title(title)
+	x = species_dict.get(ylabel)
+	if x==0 or x==1: plt.gca().invert_yaxis()
 	plt.show()
 	
 	
@@ -19,12 +20,6 @@ def remove(string):
 def species_reader():
 	i=0
 	num_species=4
-	species_dict =	{
-	  "C11H18N2": 0,
-	  "C19H20O4": 1,
-	  "C30H38O4N2": 2,
-	  "C49H58O8N2": 3
-	}
 	time_Step=[]
 	No_Moles=[]
 	No_Specs=[]
@@ -64,5 +59,10 @@ def species_reader():
 		make_graph(time_Step, trucker[i], xlabel="time_Step", ylabel=list(species_dict.keys())[i], title="Graph")
 		
 			
-		
+species_dict =	{
+	  "C11H18N2": 0,
+	  "C19H20O4": 1,
+	  "C30H38O4N2": 2,
+	  "C49H58O8N2": 3
+}		
 species_reader()
