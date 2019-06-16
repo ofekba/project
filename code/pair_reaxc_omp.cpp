@@ -629,6 +629,7 @@ void PairReaxCOMP::read_reax_forces(int /* vflag */)
       count_bb_timesteps=0;
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
+      if(update->ntimestep>150000)  calm_down=1000;
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }
@@ -683,7 +684,7 @@ void PairReaxCOMP::FindBond()
 }
 
 /* ---------------------------------------------------------------------- */
-
+/*
 double PairReaxCOMP::compute_BB(){
   //printf("\nin computebb ()\n");
   for (int i = 0; i < atom->nlocal; i++) {
@@ -706,11 +707,11 @@ double PairReaxCOMP::compute_BB(){
 
   //printf("\nout computebb ()\n");
  return e;
-}
+} */
 
 /* ---------------------------------------------------------------------- */
 
-double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
+/* double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
  // if(update->ntimestep>1000 || update->ntimestep<1010) printf("\n\n\nin PairReaxCOMP::compute_BB_pair\n\n\n");
   
   int i,j,itype,jtype,pk,k;
@@ -809,14 +810,14 @@ double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
     
   fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
     
-  /*//calculate the F force vector for atom i
-  f_fourset[i_tag-1][0] += (delx*fpair)/rij;
-  f_fourset[i_tag-1][1] += (dely*fpair)/rij;
-  f_fourset[i_tag-1][2] += (delz*fpair)/rij;
-  //calculate the F force vector for atom j       
-  f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
-  f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
-  f_fourset[j_tag-1][2] -= (delz*fpair)/rij;*/
+  // //calculate the F force vector for atom i
+  // f_fourset[i_tag-1][0] += (delx*fpair)/rij;
+  // f_fourset[i_tag-1][1] += (dely*fpair)/rij;
+  // f_fourset[i_tag-1][2] += (delz*fpair)/rij;
+  // //calculate the F force vector for atom j       
+  // f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
+  // f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
+  // f_fourset[j_tag-1][2] -= (delz*fpair)/rij;
 
   workspace->f[i][0] -= sign*(dvec[0]*fpair)/rij;
   workspace->f[i][1] -= sign*(dvec[1]*fpair)/rij;
@@ -831,4 +832,4 @@ double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
   double e=F1[itype][jtype] * (1 - exp( -F2[itype][jtype] * r * r ));
   return e;
 
-}
+}*/

@@ -46,7 +46,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg)
 {
   //printf("\n*********FixReaxCCheckFourset:\tin constructor***********\n");
-  if (narg != 5) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
+  if (narg != 6) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
   ntypes = atom->ntypes;
@@ -81,6 +81,10 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
         error->one(FLERR,str);
       }
     }
+   nevery_dists = force->inumeric(FLERR,arg[5]);
+  if (nevery_dists <= 0 )
+    error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal dists file nevery");//**********
+
 
   if (atom->tag_consecutive() == 0)
     error->all(FLERR,"Atom IDs must be consecutive for fix reax/c/checkFourset");
@@ -92,9 +96,10 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   allocate();
   //printf("\n*********FixReaxCCheckFourset:\tout constructor***********\n");
   //ofek
+  strcpy(fp_suffix,arg[4]);
   int _set_flag=set_mol_pattern();
   if(_set_flag==0) printf("\nsuccess define molecole file pattern\n");
-  else printf("\nerror define molecole file pattern\n");
+  else error->all(FLERR,"Illegal \"Extra_Potential_Parameters\" file, illigal molecole file pattern");//**********
 
 }
 
@@ -137,7 +142,7 @@ void FixReaxCCheckFourset::init()
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
   if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
-  //printf("\n*********FixReaxCCheckFourset:\tout allocate***********\n");
+  //printf("\n*********FixReaxCCheckFourset:\tout init***********\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -185,13 +190,28 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       fprintf(fp,"# totalAtomNum %d \n",atom->nlocal);
       fprintf(fp,"# fix_nevery %d",_nevery);
     }
-    if(update->ntimestep%_nevery==0)
+    //write dist to new file
+    if(update->ntimestep%nevery_dists==0 && update->ntimestep>0){
+      fclose(fp);
+      char fp_name[100];
+      strcpy(fp_name,fp_suffix);
+      strcat(fp_name,".");
+      printf("\n\n*****fp_name: %s\n\n\n",fp_name);
+      char ts[20];
+      sprintf(ts, "%d", update->ntimestep);
+      strcat(fp_name,ts);
+      printf("\n\n*****fp_name: %s\n\n\n",fp_name);
+      fp = fopen(fp_name,"w");
+    }
+    if(update->ntimestep%_nevery==0 && fp!=NULL)
       fprintf(fp,"\n# Timestep " BIGINT_FORMAT ,update->ntimestep);
   }
 
   if(update->ntimestep%_nevery!=0)
     return;
 
+    
+    
   const int TYPE_C = 0;
   const int TYPE_H = 1;
   const int TYPE_O = 2;
@@ -422,6 +442,7 @@ void FixReaxCCheckFourset::destroy()
   memory->destroy(fourset);
   memory->destroy(o_c_pair_tags);
   memory->destroy(n_tags);
+  memory->destroy(fp_suffix);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -432,6 +453,7 @@ void FixReaxCCheckFourset::allocate()
   memory->create(fourset,atom->nlocal,4,"reax/c/checkFourset:fourset");//***************
   memory->create(o_c_pair_tags,4,2,"reax/c/checkFourset:o_c_pair_tags");//***************
   memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
+  memory->create(fp_suffix,100,"reax/c/checkFourset:fp_suffix");//***************
   //printf("\n*********FixReaxCCheckFourset:\tout allocate***********\n");
 }
 
@@ -444,6 +466,7 @@ double FixReaxCCheckFourset::memory_usage()
   bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
   bytes += 1.0*4*2*sizeof(int);//o_c_pair_tags
   bytes += 1.0*2*sizeof(int);//n_tags
+  bytes += 1.0*100*sizeof(char);//fp_suffix
 
   return bytes;
 }
@@ -473,13 +496,19 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     n_tags[i]=0;
   }
 
+  int rtn_val;
+
   while(token){
     if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
       for(int i=0; i<4; i++){
         for(int j=0; j<2; j++){
           if(j==0) token = strtok(NULL, " ");
           else token = strtok(NULL, "\n");
-          sscanf(token, "%d", &temp);
+          rtn_val=sscanf(token, "%d", &temp);
+          if(rtn_val<=0){
+            fclose(parameters_fp);
+            return -1;
+          }
           o_c_pair_tags[i][j]=temp;
         }
       }
@@ -487,13 +516,23 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     }
     if(strcmp(token, "n tags")==0 || strcmp(token, "N tags")==0){
       token = strtok(NULL, " ");
-      sscanf(token, "%d", &temp);
+      rtn_val=sscanf(token, "%d", &temp);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
       n_tags[0]=temp;
       token = strtok(NULL, "\n");
-      sscanf(token, "%d", &temp);
+      rtn_val= sscanf(token, "%d", &temp);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
       n_tags[1]=temp;
       finish_flag++;
     }
+
+    //ofek
     if(finish_flag==2){
       for(int i=0; i<4; i++){
         printf("\nO-C pair %d %d\n",o_c_pair_tags[i][0],o_c_pair_tags[i][1]);
@@ -504,7 +543,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     }
     token = strtok(NULL, "\n");
   }
-  if(finish_flag==0){
+  if(finish_flag<2){
     fclose(parameters_fp);
     printf("\n not finish\n");
     return -1;

@@ -44,6 +44,8 @@ class FixReaxCCheckFourset : public Fix {
   int num_fourset; //0 if the list is empty. else, number of fourset
   FILE *fp;
   int set_mol_pattern();
+  char *fp_suffix;
+  int nevery_dists;
 
   void allocate();
   void destroy();

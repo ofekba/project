@@ -142,6 +142,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   F2=NULL;
   MAX_NUM_TIMESTEPS=5000; //DEFAULT VALUE
   parameters_fp=NULL;
+  calm_down=0;
 
 
   //FOR ENERGY_FP
@@ -854,6 +855,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
       count_bb_timesteps=0;
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
+      if(update->ntimestep>150000)  calm_down=1000;
       //OFEK
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
       }
@@ -967,6 +969,8 @@ int PairReaxC::set_extra_potential_parameters(){
 
 //ofek
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
+  int rtn_val;
+
   if (parameters_fp == NULL) {
     char str[128];
     snprintf(str,128,"Cannot open fix reax/c/bonds file Extra_Potential_Parameters.txt");
@@ -990,7 +994,11 @@ int PairReaxC::set_extra_potential_parameters(){
     else if(strcmp(token, "max_iterarions_of_potential")==0){
       token = strtok(NULL, "\n");
       //printf("\n max iter token= %s\n",token);
-      sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
+      rtn_val=sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
     }
     else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
       for(int i=0; i<4; i++){
@@ -1001,7 +1009,11 @@ int PairReaxC::set_extra_potential_parameters(){
             token = strtok(NULL, " ");
           else
             token = strtok(NULL, "\n");
-          sscanf(token, "%lf", &temp);
+          rtn_val=sscanf(token, "%lf", &temp);
+          if(rtn_val<=0){
+            fclose(parameters_fp);
+            return -1;
+          }
           switch(j) {
             case 0: type1=int(temp);
               break;
@@ -1027,6 +1039,7 @@ int PairReaxC::set_extra_potential_parameters(){
     }
     else{
       printf("\n format error\n");
+      fclose(parameters_fp);
       return -1;
     }
     if(finish_flag==1){
@@ -1053,6 +1066,10 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
     //printf("\ntoo early\n");
     return 0;
   }
+  if(calm_down>0){
+    calm_down--;
+    return 0;
+  }
 
   if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS)
   {
@@ -1062,6 +1079,7 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
   int set_params_flag=set_extra_potential_parameters();
   if(set_params_flag==-1){
     printf("\nerror in set_extra_potential_parameters\n");
+     error->all(FLERR,"Illegal extra_potential_parameters file reax/c command");
     return 0;
   }
   //OFEK
@@ -1242,11 +1260,11 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
   //FOR DEBUGGING
   //OFEK
  // if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
-  if(count_bb_timesteps%1000==0){
+ /*if(count_bb_timesteps%1000==0){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
     printf("\nr=%f, temp=%f, force=%f\n\n", r, temp, force);
-  }
+ }*/
   
   return force;
 }

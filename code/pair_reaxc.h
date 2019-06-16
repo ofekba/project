@@ -76,6 +76,7 @@ class PairReaxC : public Pair {
   int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
   FILE *energy_fp; //file that document the added energy to the system
   FILE *parameters_fp; //file of the parameters of the extra potential
+  int calm_down;
 
 
  protected:
