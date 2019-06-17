@@ -29,8 +29,8 @@ namespace LAMMPS_NS {
 
 class FixReaxCCheckFourset : public Fix {
  public:
-  FixReaxCCheckFourset(class LAMMPS *, int, char **);
-  virtual ~FixReaxCCheckFourset();
+  FixReaxCCheckFourset(class LAMMPS *, int, char **); //constructor
+  virtual ~FixReaxCCheckFourset(); //destructor
   int setmask();
   virtual void init();
   void setup(int);
@@ -38,17 +38,17 @@ class FixReaxCCheckFourset : public Fix {
 
  protected:
   int me, nprocs, nmax, ntypes, maxsize;
-  int **fourset; //list of fourset to appky tha potential on
-  int **o_c_pair_tags;
-  int *n_tags;
-  int num_fourset; //0 if the list is empty. else, number of fourset
-  FILE *fp;
-  int set_mol_pattern();
-  char *fp_suffix;
-  int nevery_dists;
+  int **fourset; //list of fourset to apply the potential on
+  int **o_c_pair_tags; //the legal O-C atom pairs pattern to apply the extra potential on
+  int *n_tags; //the pattern of N atom's tags
+  int num_fourset; //0 if the list is empty. else, number of foursets in the list
+  FILE *fp; //for dists file that follow the distances between atoms.
+  char *fp_suffix; //dists file suffix
+  int nevery_dists; //seperate the dists file into many files with this timesteps nevery
+  int set_mol_pattern();//function to set the pattern of o_c_pair_tags and n_tags
 
-  void allocate();
-  void destroy();
+  void allocate(); //alocate memory
+  void destroy(); //free memory
   virtual void Output_ReaxC_Bonds(bigint);
   void FindNbr(struct _reax_list*);
   int nint(const double &);

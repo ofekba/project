@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Ray Shan (Sandia, tnshan@sandia.gov)
+   Contributing author: Ofek Brazani (azrieli college of engineering address, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #include <cstdlib>
@@ -45,20 +45,19 @@ using namespace FixConst;
 FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg)
 {
-  //printf("\n*********FixReaxCCheckFourset:\tin constructor***********\n");
+  //check if the command in the "in" file is legal
   if (narg != 6) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
   ntypes = atom->ntypes;
   nmax = atom->nmax;
-  //printf("\n==================nmax=%d\n", nmax);//************
   
   nevery = force->inumeric(FLERR,arg[3]);
 
   if (nevery <= 0 )
     error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal nevery");//**********
 
-//for fp
+//for dists fp
   if (me == 0) {
       char *suffix = strrchr(arg[4],'.');
       if (suffix && strcmp(suffix,".gz") == 0) {
@@ -91,15 +90,13 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
 
   fourset = NULL;
   o_c_pair_tags = NULL;
-  n_tags=0;
+  n_tags=NULL;
 
-  allocate();
-  //printf("\n*********FixReaxCCheckFourset:\tout constructor***********\n");
-  //ofek
-  strcpy(fp_suffix,arg[4]);
-  int _set_flag=set_mol_pattern();
-  if(_set_flag==0) printf("\nsuccess define molecole file pattern\n");
-  else error->all(FLERR,"Illegal \"Extra_Potential_Parameters\" file, illigal molecole file pattern");//**********
+  allocate(); //allocate all the memory for each struct.
+  strcpy(fp_suffix,arg[4]); //define the suffix for each dists file that follow dists between reactive atoms
+
+  int _set_flag=set_mol_pattern();//set o_c_pair_tags, n_tags by the user input
+  if(_set_flag!=0) error->all(FLERR,"Illegal \"Extra_Potential_Parameters\" file, illigal molecole file pattern");//**********
 
 }
 
@@ -107,21 +104,17 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
 
 FixReaxCCheckFourset::~FixReaxCCheckFourset()
 {
-  printf("\n****in destructor FixReaxCCheckFourset*****\n");
   MPI_Comm_rank(world,&me);
   destroy();
   if (me == 0) fclose(fp);
-  //printf("\n*-*-*-*finish the fix of ofki ofkilish :)*-*-*-*\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
 int FixReaxCCheckFourset::setmask()
 {
-  //printf("\n*****in setmask*****\n");
   int mask = 0;
   mask |= END_OF_STEP;
-  //printf("\n****out setmask*****\n");
   return mask;
 }
 
@@ -129,31 +122,25 @@ int FixReaxCCheckFourset::setmask()
 
 void FixReaxCCheckFourset::setup(int /*vflag*/)
 {
-  //printf("\n****in setup*****\n");
   end_of_step();
-  //printf("\n****out setup*****\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void FixReaxCCheckFourset::init()
 {
-  //printf("\n*********FixReaxCCheckFourset:\tin init***********\n");
+  //reaxc singelton instance
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
   if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
-  //printf("\n*********FixReaxCCheckFourset:\tout init***********\n");
 }
 
 /* ---------------------------------------------------------------------- */
 //function that create a file that following the distance between all of the atoms.
 void FixReaxCCheckFourset::end_of_step()
 {
-  //printf("\n****in end_of_step*****\n");
   Output_ReaxC_Bonds(update->ntimestep);
-  //followDistFunc();
   if (me == 0) fflush(fp);
-  //printf("\n****out end_of_step*****\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -165,32 +152,35 @@ void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 
 /* ---------------------------------------------------------------------- */
 
-
-/*
-   - list->inum  = the length of the neighborlists list.
-   - list->ilist  = list list of "i" atoms for which neighbor lists exist.
-   - list->numneigh = the length of each these neigbor list.
->  - list->firstneigh = the pointer to the list of neighbors of "i".
-*/
-
-
-
+/* this function update the two neigh lists of all the atoms:
+    far_neigh_list- for non-bonded atoms with distance less then 10
+    bond_list- for bonded atoms.
+  using those lists to find legal foursets that stands with the distances
+  conditions from the paper with only O-C pairs that the C atom bonded only
+  to one O atom.*/
 void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
 {
-  //printf("\n=========in FindNbr=========\n");//************
   int nlocal_tot = static_cast<int> (atom->nlocal);
   if (atom->nmax > nmax) {
     nmax = atom->nmax;
   }
+
+  //TODO
   int _nevery=10;
   int num_of_epons=int(atom->nlocal/58.5);
+
+  //do it only each nevery timestep
+  if(update->ntimestep%_nevery!=0)
+    return;
+
   if(fp!=NULL){
+    //writing the header of the dists file
     if(update->ntimestep==0){
       fprintf(fp,"# totalTimesteps " BIGINT_FORMAT " \n",update->laststep);
       fprintf(fp,"# totalAtomNum %d \n",atom->nlocal);
       fprintf(fp,"# fix_nevery %d",_nevery);
     }
-    //write dist to new file
+    //create new dists file to write to with the same suffix.
     if(update->ntimestep%nevery_dists==0 && update->ntimestep>0){
       fclose(fp);
       char fp_name[100];
@@ -203,15 +193,12 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       printf("\n\n*****fp_name: %s\n\n\n",fp_name);
       fp = fopen(fp_name,"w");
     }
-    if(update->ntimestep%_nevery==0 && fp!=NULL)
+    //write to the dists file the current time step as header to this timestep distances list
+    if(fp!=NULL)
       fprintf(fp,"\n# Timestep " BIGINT_FORMAT ,update->ntimestep);
   }
-
-  if(update->ntimestep%_nevery!=0)
-    return;
-
-    
-    
+ 
+ //const known values.
   const int TYPE_C = 0;
   const int TYPE_H = 1;
   const int TYPE_O = 2;
@@ -219,20 +206,21 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   const int EPON_SIZE = 43;
   const int DETDA_SIZE = 31;
   
-  //NEIGH LIST BY FAR NEIGH LIST STRUCT
-  int pi1, pi2, pi3, pi4;
-  int _o, _h, _n, _c;
-  int start_o, end_o, start_h, end_h, start_n, end_n, start_c, end_c, start_12, end_12;
-  int type_i1, type_i2, type_i3, type_i4, tag_i1, tag_i2;
-  reax_list *far_nbrs, *bond_nbrs;
-  far_neighbor_data *nbr_p_oh, *nbr_p_nc;
-  bond_data *nbr_p_hn, *nbr_p_co, *nbr_p_12;
-  reax_atom *atom_i1, *atom_i2, *atom_i3, *atom_i4, *atom_i5;
+  //i1= O atom, i2= H atom, i3= N atom, i4= C atom
+  int pi1, pi2, pi3, pi4; //the index value of each atom in the list
+  int _o, _h, _n, _c; //the index of each atom in the main all atoms list
+  int start_o, end_o, start_h, end_h, start_n, end_n, start_c, end_c, start_12, end_12; //pointers to the start and the end of each atom neigh list.
+  int type_i1, type_i2, type_i3, type_i4, tag_i1, tag_i2; //tag&type value of each atom
+  reax_list *far_nbrs, *bond_nbrs; //pointer to neigh lists
+  far_neighbor_data *nbr_p_oh, *nbr_p_nc; //pointer to neigh in far neigh list
+  bond_data *nbr_p_hn, *nbr_p_co, *nbr_p_12; //pointer to neigh in bond neigh list
+  reax_atom *atom_i1, *atom_i2, *atom_i3, *atom_i4, *atom_i5; //pointer to atom struct
 
   far_nbrs = (reaxc->lists) + FAR_NBRS;
   bond_nbrs = (reaxc->lists) + BONDS;
   num_fourset = 0;
 
+  //reset the neigh lists
   for(int nn=0; nn<atom->nlocal; nn++){
     fourset[nn][0]=0;
     fourset[nn][1]=0;
@@ -245,9 +233,9 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     type_i1  = atom_i1->type;
     tag_i1 = atom_i1->orig_id;
     
+    /* writing to the dists file distance only between O,C,N atoms known as legal candidate
+      for foursets atoms to the rest of all atoms from their own far-neigh-list and bond-list*/
     if(fp!=NULL){
-      // if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
-      
       int writing_flag=0;
       for(int wf=0; wf<4; wf++){
         if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
@@ -255,16 +243,18 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       }
       if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
         writing_flag=1;
+      
       if(writing_flag==1)
         fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
+      else continue;
     }
-   
-
+   //follow this atom neigh lists to write his distances from the rest of the atoms.
     start_o = Start_Index(_o, far_nbrs);
     end_o   = End_Index(_o, far_nbrs);
     start_12 = Start_Index(_o, bond_nbrs);
     end_12   = End_Index(_o, bond_nbrs);
 
+    //follow and write bonds distances.
     for( pi1 = start_12; pi1 < end_12; ++pi1 ) {
       nbr_p_12 = &( bond_nbrs->select.bond_list[pi1] );
       _h = nbr_p_12->nbr;
@@ -273,8 +263,6 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       tag_i2 = atom_i2->orig_id;
 
       if(fp!=NULL && tag_i2>0){
-        // if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
-        
         int writing_flag=0;
         for(int wf=0; wf<4; wf++){
           if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
@@ -287,7 +275,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       }
     }
     
-
+    //follow and write far neigh distances.
     for( pi1 = start_o; pi1 < end_o; ++pi1 ) {
       nbr_p_oh = &( far_nbrs->select.far_nbr_list[pi1] );
       _h = nbr_p_oh->nbr;
@@ -295,16 +283,24 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       type_i2= atom_i2->type;
       tag_i2 = atom_i2->orig_id;
 
-      if(fp!=NULL){
-        if((tag_i1-8)%EPON_SIZE==0 ||(tag_i1-16)%EPON_SIZE==0  || (tag_i1-22)%EPON_SIZE==0 ==60 || (tag_i1-18)%EPON_SIZE==0  || (tag_i1-23)%EPON_SIZE==0 || (tag_i1-21)%EPON_SIZE==0 || (tag_i1-15)%EPON_SIZE==0 || (tag_i1-19)%EPON_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-8)%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-9)%DETDA_SIZE==0 ){
-          fprintf(fp,"%d %f ",tag_i2, nbr_p_oh->d);
+      if(fp!=NULL && tag_i2>0){
+        int writing_flag=0;
+        for(int wf=0; wf<4; wf++){
+          if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
+            writing_flag=1;
         }
+          if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
+            writing_flag=1;
+          if(writing_flag==1)
+            fprintf(fp,"%d %f ",tag_i2, nbr_p_oh->d);
       }
-      if (type_i1 != TYPE_O) continue;
-      //printf("o %d type %d atom %d type %d\n", atom_i1->orig_id, type_i1, atom_i2->orig_id, type_i2);
-      if(type_i2 != TYPE_H) continue;
+      
+      /* if type_i1==O and type_i2==H look for fourset.
+        else, continue write the distances file*/
+      if(type_i1 != TYPE_O && type_i2 != TYPE_H) continue;
+
+      //if O-H distance meets the paper condition, look for N atom
       if (1.3 <= nbr_p_oh->d && nbr_p_oh->d <= 8.0 ){
-        //printf("\n\n*****cond 1 OK*****\n\n");
         start_h = Start_Index(_h, bond_nbrs);
         end_h = End_Index(_h, bond_nbrs);
         for( pi2 = start_h; pi2 < end_h; ++pi2 ){
@@ -312,10 +308,9 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
           _n=nbr_p_hn->nbr;
           atom_i3 = &(reaxc->system->my_atoms[_n]);
           type_i3= atom_i3->type;
-         //printf("h %d type %d atom %d type %d\n", atom_i2->orig_id,type_i2, atom_i3->orig_id, type_i3);
           if(type_i3 != TYPE_N) continue;
+          //if H-N distance meets the paper condition, look for C atom
           if (0.8 <= nbr_p_hn->d && nbr_p_hn->d <= 1.3 ){
-            //printf("\n\n*****cond 2 OK doki*****\n\n");
             start_n = Start_Index(_n, far_nbrs);
             end_n = End_Index(_n, far_nbrs);
             for( pi3 = start_n; pi3 < end_n; ++pi3 ){
@@ -324,43 +319,33 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
               atom_i4 = &(reaxc->system->my_atoms[_c]);
               type_i4= atom_i4->type;
               if(type_i4 != TYPE_C) continue;
+              //if N-C distance meets the paper condition, look for the founded O atom in C's neigh lists
               if(3.0 <= nbr_p_nc->d && nbr_p_nc->d <= 8.0 ){
-                //printf("*****cond 3 OK doki*****\n");
-
-                //options for o-c
-                //o= 22+EPON_SIZEx c=18+EPON_SIZEx || o= 8+EPON_SIZEx c=16+EPON_SIZEx || o= 23+EPON_SIZEx c=21+EPON_SIZEx || o= 15+EPON_SIZEx c=19+EPON_SIZEx
                 int _re=atom_i1->orig_id%EPON_SIZE;
                 int _x=int( (atom_i1->orig_id - _re) / EPON_SIZE );
                 int _optional_c_tag=0;
-                switch(_re) {
-                  case 22: _optional_c_tag=18+EPON_SIZE*_x;
-                    break;
-                  case 8: _optional_c_tag=16+EPON_SIZE*_x;
-                    break;
-                  case 23: _optional_c_tag=21+EPON_SIZE*_x;
-                    break;
-                  case 15: _optional_c_tag=19+EPON_SIZE*_x;
-                    break;
+                //check if the O-C pait is legal (C is bonded to only this O atom)
+                for(int oc=0; oc<4; oc++){
+                  if(_re==o_c_pair_tags[oc][0])
+                    _optional_c_tag=o_c_pair_tags[oc][1]+EPON_SIZE*_x;
                 }
-
+              
                 if(atom_i4->orig_id != _optional_c_tag) continue;
-
                 start_c = Start_Index(_c, bond_nbrs);
                 end_c = End_Index(_c, bond_nbrs);
-                
+                //check if C and O are bonded
                 for( pi4 = start_c; pi4 < end_c; ++pi4 ){
                   nbr_p_co = &( bond_nbrs->select.bond_list[pi4] );
                   atom_i5=&(reaxc->system->my_atoms[nbr_p_co->nbr]);
                   if(nbr_p_co->nbr != _o) continue;
+                  //if C-O meets the paper condition, we found legal fourset.
                   if (0.9 <= nbr_p_co->d && nbr_p_co->d <= 2.2 ){
-                    //printf("\n\n*****cond 4 OK *****\n\n");
-                    //printf("\n\n*~~~~*\t\tsuccess !!!!!!!\t\t *~~~~*\n\n");
+                    //add the fourset to the foursets list
                     fourset[num_fourset][0] = atom_i1->orig_id;
                     fourset[num_fourset][1] = atom_i2->orig_id;
                     fourset[num_fourset][2] = atom_i3->orig_id;
                     fourset[num_fourset][3] = atom_i4->orig_id;
                     num_fourset++;
-
                   }
                 }
               }
@@ -370,7 +355,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       }
     }
   }
-//OFEK
+  //code that prints the foursets list any 100 timesteps.
   /*if(update->ntimestep%100==0){
     printf("\n\nat timestep %d\n",update->ntimestep);
     for(int nn=0; nn<num_fourset; nn++)
@@ -379,50 +364,35 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   }*/
 
     if(num_fourset!=0){
-      int rand_num= int(rand() % num_fourset + 1) - 1;
-      //printf("~~~~~~rand forset=%d~~~~~~\n", rand_num);
-      fourset[0][0] = fourset[rand_num][0];
-      fourset[0][1] = fourset[rand_num][1];
-      fourset[0][2] = fourset[rand_num][2];
-      fourset[0][3] = fourset[rand_num][3];
-
+     //choose randomly fourset to apply the potential on.
+      int rand_num;
+      if(num_fourset==1) rand_num=0
+      else rand_num= int(rand() % num_fourset + 1) - 1;
       
-
-      //OFEK
-      //TODO: to operate the potentil on 2 fourset togther
       
-      /*int rand_flag=0;
-      int sec_rand_num;
-      int is_already_found[num_fourset];
-      for(int nn=0; nn<num_fourset; nn++)
-        is_already_found[nn]=0;
-      is_already_found[rand_num-1]=1;
-      while(rand_flag<num_fourset){
-        sec_rand_num= int(rand() % num_fourset + 1) - 1;
-        rand_flag++;
-        if(is_already_found[sec_rand_num-1]==0){
-          if()
+      //swap places between the first fourset to the randomly chosen fourset
+      int temp_val;
+      for(int _s=0; _s<4; _s++){
+        temp_val=fourset[0][_s];
+        fourset[0][_s] = fourset[rand_num][_s];
+        fourset[rand_num][_s]=temp_val;
+      }
 
-        }
-        
-      }*/
-
-
+      //try to apply the extra potential on the chosen fourset
       int apply_flag = reaxc->set_fourset(fourset, 1);
-      //OFEK
+      //if the apply succeeded
       if(apply_flag==1){
+        //optional: print all the founded foursets
         for(int nn=0; nn<num_fourset; nn++)
           printf("fourset #%d: %d %d %d %d\n",nn, fourset[nn][0], fourset[nn][1], fourset[nn][2], fourset[nn][3]);
         printf("\n");
         printf("\nstart operate the potential\n");
+        //write to the dists file the fourset we found and apply the extra potential on
         fprintf (fp,"\n# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
         fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
       }
     }
   
-  
-
-      //printf("\n=============finish FindNbr=========\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -449,12 +419,10 @@ void FixReaxCCheckFourset::destroy()
 
 void FixReaxCCheckFourset::allocate()
 {
-  //printf("\n*********FixReaxCCheckFourset:\tin allocate***********\n");
   memory->create(fourset,atom->nlocal,4,"reax/c/checkFourset:fourset");//***************
   memory->create(o_c_pair_tags,4,2,"reax/c/checkFourset:o_c_pair_tags");//***************
   memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
   memory->create(fp_suffix,100,"reax/c/checkFourset:fp_suffix");//***************
-  //printf("\n*********FixReaxCCheckFourset:\tout allocate***********\n");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -462,7 +430,7 @@ void FixReaxCCheckFourset::allocate()
 double FixReaxCCheckFourset::memory_usage()
 {
   double bytes;
-  //bytes = 3.0*nmax*sizeof(double);//??
+  //bytes = 3.0*nmax*sizeof(double);
   bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
   bytes += 1.0*4*2*sizeof(int);//o_c_pair_tags
   bytes += 1.0*2*sizeof(int);//n_tags
@@ -472,8 +440,9 @@ double FixReaxCCheckFourset::memory_usage()
 }
 /* ---------------------------------------------------------------------- */
 //return 0 for success. else, return -1.
+/*this function set the  o_c_pair_tags and n_tags parameters by the user input
+  file "Extra_Potential_Parameters.txt" */
 int FixReaxCCheckFourset::set_mol_pattern(){
-  //printf("\nPairReaxC:; in set_extra_potential_parameters\n");
 
 //ofek
  FILE* parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
@@ -488,7 +457,8 @@ int FixReaxCCheckFourset::set_mol_pattern(){
   char *token = strtok(buff, "\n");
   int finish_flag=0;
   int temp;
-
+  
+  //reset structs
   for(int i=0; i<4; i++){
     o_c_pair_tags[i][0]=o_c_pair_tags[i][1]=0;
   }
@@ -498,6 +468,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
 
   int rtn_val;
 
+  //set the o-c pair tags parameters
   while(token){
     if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
       for(int i=0; i<4; i++){
@@ -514,6 +485,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
       }
       finish_flag++;  
     }
+    //set the N tags parameters
     if(strcmp(token, "n tags")==0 || strcmp(token, "N tags")==0){
       token = strtok(NULL, " ");
       rtn_val=sscanf(token, "%d", &temp);
@@ -532,7 +504,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
       finish_flag++;
     }
 
-    //ofek
+    //only if both of them defiened succefully
     if(finish_flag==2){
       for(int i=0; i<4; i++){
         printf("\nO-C pair %d %d\n",o_c_pair_tags[i][0],o_c_pair_tags[i][1]);
@@ -543,6 +515,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     }
     token = strtok(NULL, "\n");
   }
+  // if not both of them defiened succefully, ERROR
   if(finish_flag<2){
     fclose(parameters_fp);
     printf("\n not finish\n");
