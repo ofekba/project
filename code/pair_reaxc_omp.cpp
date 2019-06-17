@@ -629,7 +629,7 @@ void PairReaxCOMP::read_reax_forces(int /* vflag */)
       count_bb_timesteps=0;
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
-      if(update->ntimestep>150000)  calm_down=1000;
+      calm_down=1000;
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }
