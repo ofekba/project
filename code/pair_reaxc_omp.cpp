@@ -197,6 +197,10 @@ void PairReaxCOMP::compute(int eflag, int vflag)
   int *num_bonds = fix_reax->num_bonds;
   int *num_hbonds = fix_reax->num_hbonds;
 
+  if(calm_down>0){
+    calm_down--;
+  }
+
   evdwl = ecoul = 0.0;
   ev_init(eflag,vflag);
 

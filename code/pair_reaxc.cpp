@@ -567,7 +567,10 @@ void PairReaxC::compute(int eflag, int vflag)
   if (neighbor->ago == 0) comm->forward_comm_fix(fix_reax);
   int *num_bonds = fix_reax->num_bonds;
   int *num_hbonds = fix_reax->num_hbonds;
-
+  
+  if(calm_down>0){
+    calm_down--;
+  }
 
   evdwl = ecoul = 0.0;
   ev_init(eflag,vflag);
@@ -1067,7 +1070,6 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
     return 0;
   }
   if(calm_down>0){
-    calm_down--;
     return 0;
   }
 

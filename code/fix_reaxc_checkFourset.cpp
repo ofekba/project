@@ -297,7 +297,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       
       /* if type_i1==O and type_i2==H look for fourset.
         else, continue write the distances file*/
-      if(type_i1 != TYPE_O && type_i2 != TYPE_H) continue;
+      if(type_i1 != TYPE_O || type_i2 != TYPE_H) continue;
 
       //if O-H distance meets the paper condition, look for N atom
       if (1.3 <= nbr_p_oh->d && nbr_p_oh->d <= 8.0 ){
@@ -366,7 +366,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     if(num_fourset!=0){
      //choose randomly fourset to apply the potential on.
       int rand_num;
-      if(num_fourset==1) rand_num=0
+      if(num_fourset==1) rand_num=0;
       else rand_num= int(rand() % num_fourset + 1) - 1;
       
       
