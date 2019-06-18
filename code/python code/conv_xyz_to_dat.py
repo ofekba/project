@@ -1,5 +1,6 @@
+"""this script convert XYZ file to DAT file using inputs from the user:
+XYZ file name and box boundaries (high and low x,y,z values) """
 import sys
-
 
 def conv_to_dat(text, file_name):
 	text_list = text.split("\n")
@@ -9,7 +10,7 @@ def conv_to_dat(text, file_name):
 	atom_y=0
 	atom_z=0
 	num_atoms=0
-
+	#get the file name from the user
 	file_name=file_name[:-4]
 	dat_file="#"+file_name+" molecules\n"
 	file_name+=".dat"
@@ -20,6 +21,7 @@ def conv_to_dat(text, file_name):
 	dat_file+=str(num_atoms)+" atoms\n"
 	dat_file+="4 atom types\n\n"
 
+	#get the box boundaries value from the user
 	box_xlo = float (input("Enter a box xlo value: ") )
 	box_xhi = float (input("Enter a box xhi value: ") )
 	box_ylo = float (input("Enter a box ylo value: ") )
@@ -49,7 +51,7 @@ def conv_to_dat(text, file_name):
 		atom_tag+=1
 		if atom_tag<=num_atoms:
 			dat_file+="\n"
-
+	#create new DAT file
 	new_file= open(file_name,"w+")
 	new_file.write(dat_file)
 

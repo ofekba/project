@@ -1,9 +1,13 @@
+"""this script reads the species.out LAMMPS output file and creates a
+graph of num of species for each species as a function of time """
 import sys
 import math
 import numpy as np
 from matplotlib import pyplot as plt
 
 
+"""create graph using mathplot.
+	input- axis x, axis y, label for each axis and title for the graph"""
 def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.plot(axis_x,axis_y)
 	plt.xlabel(xlabel)
@@ -12,7 +16,8 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	if x==0 or x==1: plt.gca().invert_yaxis()
 	plt.show()
 	
-	
+
+"""remove tabs from strings """	
 def remove(string): 
     return string.replace("\t", "")  
 

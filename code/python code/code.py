@@ -1,9 +1,17 @@
+"""python code for short runs (with only one dists file and small amount of atoms
+that create distance Graphs between N-C, O-H, O-C, H-N pairs for each
+	fourset we apply the extra potential on during simulation.
+	and by reading log.lammps file and energy.reax file, create 
+	tempeture, preassure, potential energy, total energy, added energy by
+	the extra potential graphs as a function of time"""
+
 import sys
 import math
 import numpy as np
 from matplotlib import pyplot as plt
 
-
+"""create graph using mathplot.
+	input- axis x, axis y, label for each axis and title for the graph"""
 def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.plot(axis_x,axis_y)
 	plt.xlabel(xlabel)
@@ -11,7 +19,8 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.title(title)
 	plt.show()
 	
-
+"""create distance graph between each N-C, O-H, O-C, H-N  pairs for each
+	fourset we apply the extra potential on during simulation"""
 def dist_graph():
 	fp = open("dists.reax","r") 
 	text=fp.read() 
@@ -34,7 +43,7 @@ def dist_graph():
 		print("total_atomNum ", total_atomNum)
 	
 	
-	neverty_fix_check=10
+	neverty_fix_check=10 #default val
 	ln=text_list[2].split(" ")
 	if ln[1] == "fix_nevery":
 		neverty_fix_check=int(ln[2])
@@ -42,7 +51,8 @@ def dist_graph():
 
 
 	size=int(total_timesteps/neverty_fix_check) + 1
-
+	#array that document the distance between any 2 atoms at any timestep
+	#arr[timestpe][i][j]=the distance between atom i, atom j at time step.
 	arr=np.zeros((size, total_atomNum, total_atomNum))
 	axis_x=[]
 
@@ -55,6 +65,7 @@ def dist_graph():
 		if ln[i]=="#": i+=1
 		if(i>=len(ln)): continue
 		elif ln[i]=="Timestep":
+			#create timesteps axis- axis_x
 			timeStep=int(ln[i+1])
 			timeStep_index=int(timeStep/neverty_fix_check)
 			axis_x.append(timeStep)
@@ -71,6 +82,7 @@ def dist_graph():
 				j+=1
 				arr[timeStep_index][atom_tag-1][neigh_tag-1]=neigh_dist
 		elif ln[i]=="fourset":
+			#create foursets array that document the foursets we apply the extra potential on
 			i+=7
 			fs_ts=int(ln[i]) #current fourset timestep
 			i+=2
@@ -83,7 +95,7 @@ def dist_graph():
 				fourset_timestep.append(fs_ts)
 				num_of_foursets+=1
 
-
+	#seperate the foursets array by type
 	o_list, h_list, n_list, c_list= [],[],[],[]
 	for list in fourset:
 		o_list.append(list[0])
@@ -98,7 +110,8 @@ def dist_graph():
 	  "O": 3,
 	  "N": 4
 	}
-
+	#create the axis_y array, each cell is an axis y.
+	#each 4 axis_y are distances between 4 pairs of each fourset.
 	axis_y=[]
 	for j in range(4*num_of_foursets):
 		axis_y.append([])
@@ -131,7 +144,7 @@ def dist_graph():
 			axis_y[index+3].append(temp_dist) #N-C dist
 			
 
-
+	#print graphs of distances between 4 pairs for each fourset.
 	for i in range(len(fourset_timestep)):
 		index=i*4
 		plt.plot(axis_x,axis_y[index], label="C("+str(c_list[i])+")-O("+str(o_list[i])+")")
@@ -146,27 +159,22 @@ def dist_graph():
 	#, linestyle='--'
 
 
+"""create Graph of the added energy by the extra potential as a function of time"""
 def extraE_graph():
 	e_fp = open("energy.reax","r") 
 	text=e_fp.read() 
 	text_list = text.split("\n")
-
 	text_list=text_list[1:]
-	#print(text_list)
 	y=[]
 	for e in text_list:
 		if e == "finish": y.append(0.0)
 		elif e == "start": continue
 		else: y.append(float(e))
-
-	#x=list(range(len(y)))
-	#axis_x=list(range(1, len(y)))
-	#print(axis_x)
-
 	x= [i for i in range(len(y))]
 	make_graph(x,y, "TimeStep", "added energy", "Additional Energy As A Function Of Time")
 
-	
+
+"""create Graphs of the potential energy, total energy, tempeture and pressure by the extra potential as a function of time"""	
 def log_graphs():
 	fp = open("log.lammps","r") 
 	text=fp.read() 
@@ -200,7 +208,7 @@ def log_graphs():
 	make_graph(timeStep_arr, totalE_arr, "TimeStep", "Total Energy", "Total Energy As A Function Of Time")
 	
 		
-	
+#operate functions as you want to create the graphs you want.	
 dist_graph()
 #extraE_graph()
 #log_graphs()

@@ -1,9 +1,12 @@
+"""this code compare between dists files of different runs"""
 import sys
 import math
 import numpy as np
 from matplotlib import pyplot as plt
 
 
+"""create graph using mathplot.
+	input- axis x, axis y, label for each axis and title for the graph"""
 def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.plot(axis_x,axis_y)
 	plt.xlabel(xlabel)
@@ -11,7 +14,12 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.title(title)
 	plt.show()
 	
-	
+
+"""this function recieve a dist file and read it to create array that document the distance
+	between any 2 atoms at any timestep
+	#arr[timestpe][i][j]=the distance between atom i, atom j at time step.
+	using this array tocreate the axis_y array, each cell is an axis y.
+	each 4 axis_y are distances between 4 pairs of each fourset."""	
 def create_dist_nparray(filename):
 	fp = open(filename,"r") 
 	text=fp.read()
@@ -112,8 +120,9 @@ def create_dist_nparray(filename):
 	
 #=================================================================
 
-time_steps_to_check=22000
-axis_x=[x*10 for x in range(2201)]
+time_steps_to_check=22000 #how many timesteps to compare
+axis_x=[x*10 for x in range(int(22000/10)+1)]
+#compare between those 6 files by creating axis_y for each of them
 axis_y_1=create_dist_nparray("dists1.reax")
 axis_y_2=create_dist_nparray("dists2.reax")
 axis_y_4=create_dist_nparray("dists4.reax")
@@ -121,12 +130,13 @@ axis_y_8=create_dist_nparray("dists8.reax")
 axis_y_12=create_dist_nparray("dists12.reax")
 axis_y_s=create_dist_nparray("distss.reax")
 title=["C-O dist","O-H dist","H-N dist","C-N dist"]
+#create graph
 for i in range(4):
 	plt.plot(axis_x,axis_y_1[i], label="1 threads")
-	#plt.plot(axis_x,axis_y_2[i], label="2 threads")
-	#plt.plot(axis_x,axis_y_4[i], label="4 threads")
-	#plt.plot(axis_x,axis_y_8[i], label="8 threads")
-	#plt.plot(axis_x,axis_y_12[i], label="12 threads")
+	plt.plot(axis_x,axis_y_2[i], label="2 threads")
+	plt.plot(axis_x,axis_y_4[i], label="4 threads")
+	plt.plot(axis_x,axis_y_8[i], label="8 threads")
+	plt.plot(axis_x,axis_y_12[i], label="12 threads")
 	plt.plot(axis_x,axis_y_s[i], label="serial")
 	plt.legend(loc='upper right')
 	plt.xlabel("timeStep")
