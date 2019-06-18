@@ -18,6 +18,9 @@
    Fix reax/c/bonds and fix reax/c/species for pair_style reax/c added by
         Ray Shan (Sandia)
    Hybrid and hybrid/overlay compatibility added by Ray Shan (Sandia)
+
+   Extra potential code addition:
+   Ofek Barazani (Azrieli college of engineering, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #include "pair_reaxc.h"
@@ -131,8 +134,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
 
   nmax = 0;
   
-  //mine
-  f_fourset=NULL; //ofek no need
+  //MY CODE
   fourset=NULL;
   num_fourset=0;
   count_bb_timesteps=0;
@@ -140,12 +142,12 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   wanted_dist=NULL;
   F1=NULL;
   F2=NULL;
-  MAX_NUM_TIMESTEPS=5000; //DEFAULT VALUE
+  MAX_NUM_TIMESTEPS=10000; //DEFAULT VALUE
   parameters_fp=NULL;
   calm_down=0;
 
 
-  //FOR ENERGY_FP
+  //open the energy document file for writing.
   energy_fp = fopen("energy.reax","w");
   if (energy_fp == NULL) {
     char str[128];
@@ -161,7 +163,6 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
 
 PairReaxC::~PairReaxC()
 {
-  printf("\n\n*******out PairReaxC*****\n\n");
   if (copymode) return;
 
   if (fix_reax) modify->delete_fix(fix_id);
@@ -192,7 +193,6 @@ PairReaxC::~PairReaxC()
   memory->destroy( mpi_data );
 
   //mine
-  memory->destroy( f_fourset );
   memory->destroy( fourset );
   memory->destroy( wanted_dist );
   memory->destroy( F1 );
@@ -230,7 +230,6 @@ void PairReaxC::allocate( )
   memory->create(cutghost,n+1,n+1,"pair:cutghost");
 
   //mine
-  memory->create(f_fourset,atom->nlocal,3,"pair:f_fourset"); //no need
   memory->create(fourset,atom->nlocal,4,"pair:fourset");
   memory->create(wanted_dist,n+1,n+1,"pair:wanted_dist");
   memory->create(F1,n+1,n+1,"pair:F1");
@@ -400,7 +399,7 @@ void PairReaxC::coeff( int nargs, char **args )
   if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
 
   //mine
-  //not here
+  //reset the parameters arrays.
   for(int i=0; i<atom->ntypes+1; i++){
     for(int j=0; j<atom->ntypes+1; j++){
       F1[i][j]=F2[i][j]=0;
@@ -558,8 +557,6 @@ void PairReaxC::compute(int eflag, int vflag)
 {
   double evdwl,ecoul;
   double t_start, t_end;
-//ofek
-  //set_extra_potential_parameters(); 
 
   // communicate num_bonds once every reneighboring
   // 2 num arrays stored by fix, grab ptr to them
@@ -568,6 +565,8 @@ void PairReaxC::compute(int eflag, int vflag)
   int *num_bonds = fix_reax->num_bonds;
   int *num_hbonds = fix_reax->num_hbonds;
   
+  //mine
+  //cool the system after operate the extra potential.
   if(calm_down>0){
     calm_down--;
   }
@@ -605,21 +604,30 @@ void PairReaxC::compute(int eflag, int vflag)
   Compute_Forces(system,control,data,workspace,&lists,out_control,mpi_data);
 
   // mine
-  double added_e=0; //the energy of the BB potential
+  double added_e=0; //the energy that the extra potential added to the system
 	if(flag_bb==1){
+    //if the extra potential is working, calculate the energy & forces
+    //apply the extra potential on the fourset
     added_e=compute_BB();
     if(added_e==-1){
-      //OFEK
-      printf("\n\tERROR! FAILED OPERATE THE EXTRA POTENTIAL\n");
+      char str[128];
+      snprintf(str,128,"PAIR_REAXC.CPP: Failed operate the extra potential on the current fourset.");
+      error->one(FLERR,str);
       added_e=0;
     }
+    /*operate the extra potential and compute the energy it add to the system succefully,
+      update the system's energy var.*/
     eng_vdwl += added_e;
   }
+  
+  //write the calculated energy to the file that document the extra potential energy addition to the system.
   if(energy_fp!=NULL)
     fprintf(energy_fp,"\n%f",added_e);
-  else
-  printf("cant write\n");
-  //OFEK^^
+  else{
+    char str[128];
+      snprintf(str,128,"PAIR_REAXC.CPP: Failed to write to \"energy.reax\" file");
+      error->one(FLERR,str);
+  }
 
   read_reax_forces(vflag);
 
@@ -848,23 +856,25 @@ int PairReaxC::write_reax_lists()
 
 void PairReaxC::read_reax_forces(int /*vflag*/)
 {
+  //if the extra potential is currently apply on fourset
   if(flag_bb==1){
+    //update the counter that count the timesteps we already apply the extra potential
     if(count_bb_timesteps<MAX_NUM_TIMESTEPS){
       count_bb_timesteps++;
-      //add_bb_potential(); //no need
     }
     else{
+      //if the counter achieve to the max value, finish apply the extra potential on this fourset.
       flag_bb=0;
       count_bb_timesteps=0;
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
+      //turn on the calm down flag, to cool the system for 1000 timesteps.
       calm_down=1000;
-      //OFEK
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
-      }
+    }
   }
 
-  //printf("\nadding the force");
+  //update the force vector for each atom in the system
   for( int i = 0; i < system->N; ++i ) {
     system->my_atoms[i].f[0] = workspace->f[i][0];
     system->my_atoms[i].f[1] = workspace->f[i][1];
@@ -930,8 +940,10 @@ double PairReaxC::memory_usage()
     bytes += 2 * nmax * MAXSPECBOND * sizeof(double);
 
   //mine
-  bytes += 3.0 * atom->nlocal * sizeof(double); //for f_fourset
   bytes += 4.0 * atom->nlocal * sizeof(int); //for fourset
+  bytes += 5.0 * 5.0 * sizeof(double); //for F1
+  bytes += 5.0 * 5.0 * sizeof(double); //for F2
+  bytes += 5.0 * 5.0 * sizeof(double); //for wanted_dist
 
   return bytes;
 }
@@ -966,11 +978,12 @@ void PairReaxC::FindBond()
 }
 
 /* ---------------------------------------------------------------------- */
-//return 0 for success. else, return -1.
-int PairReaxC::set_extra_potential_parameters(){
-  //printf("\nPairReaxC:; in set_extra_potential_parameters\n");
 
-//ofek
+/* set the F1, F2, R12 parameters for the extra potential calculation from
+  the user input file "Extra_Potential_Parameters.txt"
+  return 0 for success. else, return -1.*/
+int PairReaxC::set_extra_potential_parameters(){
+
   parameters_fp = fopen("Extra_Potential_Parameters.txt","r");
   int rtn_val;
 
@@ -983,10 +996,11 @@ int PairReaxC::set_extra_potential_parameters(){
   char buff[1000];
   fread(buff, 1000, 1, parameters_fp);
 
+  //go over the file to get the user parameters.
   char *token = strtok(buff, "\n");
   int finish_flag=0;
   while(token){
-    //printf("\ntoken %s\n", token);
+    //ignore those parameters
     if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
       for(int i=0; i<4; i++)
         token = strtok(NULL, "\n");
@@ -995,8 +1009,8 @@ int PairReaxC::set_extra_potential_parameters(){
         token = strtok(NULL, "\n");
     }
     else if(strcmp(token, "max_iterarions_of_potential")==0){
+      //gets the maximum iterarions number of the extra potential parameter
       token = strtok(NULL, "\n");
-      //printf("\n max iter token= %s\n",token);
       rtn_val=sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
       if(rtn_val<=0){
         fclose(parameters_fp);
@@ -1004,6 +1018,7 @@ int PairReaxC::set_extra_potential_parameters(){
       }
     }
     else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
+      //gets the F1, F2, R12 extra potential parameter
       for(int i=0; i<4; i++){
         int type1=0, type2=0;
         double temp, _f1, _f2, _r12;
@@ -1041,11 +1056,12 @@ int PairReaxC::set_extra_potential_parameters(){
       finish_flag=1;
     }
     else{
-      printf("\n format error\n");
+      //format ERROR, wrong usage
       fclose(parameters_fp);
       return -1;
     }
     if(finish_flag==1){
+      //success
       fclose(parameters_fp);
       return 0;
     }
@@ -1053,38 +1069,44 @@ int PairReaxC::set_extra_potential_parameters(){
   }
 
   if(finish_flag==0){
+    //missing parameters ERROR
     fclose(parameters_fp);
-    printf("\n not finish\n");
     return -1;
   }
 }
 
 /* ---------------------------------------------------------------------- */
-/*returns 1 if apply the extra potential on the foursets. else, 0*/
+/*gets a foursets list from "fix_reaxc_checkFoursets" code to apply the extra potential on.
+  **foursets = the foursets list
+  num_foursets= number of foursets in the list to apply the extra potential on
+  returns 1 if start succefully to apply the extra potential on the foursets. else, 0 */
 
 int PairReaxC::set_fourset(int **foursets, int num_foursets){
+  
+  /*if already we apply the extra potential on fourset,
+    or the system needs to cool down after finish apply the extra potential,
+    or 10K first and last timesteps of the run saved to run only reaxc potential.
+    DO NOT start apply the extra potential on the recieved fourset. */
   if(count_bb_timesteps>0 || flag_bb==1)
     return 0;
-  if(update->ntimestep<10000){
-    //printf("\ntoo early\n");
-    return 0;
-  }
   if(calm_down>0){
     return 0;
   }
-
-  if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS)
-  {
-    //printf("\ntoo late\n");
+  if(update->ntimestep<10000){
+    return 0;
+  }
+  if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS){
     return 0;
   }
   int set_params_flag=set_extra_potential_parameters();
   if(set_params_flag==-1){
-    printf("\nerror in set_extra_potential_parameters\n");
-     error->all(FLERR,"Illegal extra_potential_parameters file reax/c command");
+    //failed to set_extra_potential_parameters
+    error->all(FLERR,"Illegal extra_potential_parameters file reax/c command");
     return 0;
   }
-  //OFEK
+  //start operate the extra potential on the new recieved foursets.
+  
+  //OPTIONAL: PRINTS THE FOURSETS TO APPLY THE EXTRA POTENTIAL ON
   printf("\n~~~in set_fourset timestep %d~~~\n", update->ntimestep);
   for(int i=0; i<num_foursets; i++){
     printf("fourset #%d: %d %d %d %d\n",i,foursets[i][0],foursets[i][1],foursets[i][2],foursets[i][3]);
@@ -1100,6 +1122,7 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
   for(i=0; i<num_foursets; ++i)
     for(int j=0; j<4; j++)
       fourset[i][j]=foursets[i][j];
+  //reset to 0 the rest of the foursets list struct
   for(i; i<atom->nlocal; i++)
     for(int j=0; j<4; j++)
       fourset[i][j]=0;
@@ -1107,13 +1130,10 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
 }
 
 /* ---------------------------------------------------------------------- */
+/* apply the extra potential on the 3 pairs from each fourset.
+  returns the  additional energy that the extra potential adds to the system. else, return -1*/
 double PairReaxC::compute_BB(){
-  //printf("\nin computebb ()\n");
-  for (int i = 0; i < atom->nlocal; i++) {
-    for (int j = 0; j < 3; j++) {
-      f_fourset[i][j] = 0;
-    }
-  }
+
   double e=0; //the amount of the additional energy
 
   for(int k=0; k<num_fourset; k++){
@@ -1123,26 +1143,35 @@ double PairReaxC::compute_BB(){
     if(e==-1) return-1;
     e+=compute_BB_pair(fourset[k][2], fourset[k][3]); //N-C
     if(e==-1) return-1;
-    //e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
-    //if(e==-1) return-1;
+    /*e+=compute_BB_pair(fourset[k][2], fourset[k][1]); //N-H
+      if(e==-1) return-1;*/
   }
 
-  //printf("\nout computebb ()\n");
  return e;
 }
 
 /* ---------------------------------------------------------------------- */
+/*gets two atom's tags to calculate the force vector of the extra potential,
+  to find their "i" index in the atom list, the distance between them, and their type,
+  using those parameters as an input for method that calculate the addition for their force vectors
+  on success, returns the calculated energy they add to the system. else, return -1.*/
 double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   
   int i,j,itype,jtype,pk,k;
-  double fpair, rij=0;
-  double **x = atom->x;
-  double **f = atom->f;
-  int *type = atom->type;
+  double fpair, rij=0; //rij=the distance between i,j atoms
+  double **x = atom->x; //atom's coordinates vector
+  double **f = atom->f; //atom's force vector
+  int *type = atom->type; //atom's type vector
+  /*how the distance between i,j atoms calculated.
+    1=from the bonds list.
+    2=from the far neigh list.
+    3=manually calculation using "get_distance" method */
   int cal_dist_flag=0;
-  double d_sqr;
-  rvec dvec, xi, xj;
+  double d_sqr; //the distance^2 value
+  rvec dvec, xi, xj; //coordinates vector of their delta distance, of the i atom, of the j atom.
   
+  /*Extract the i,j atoms coordinates and type information from the atom list
+    by convert their tag into their "i" index in the atom list*/
   i=tag_to_i(i_tag);
   if(i==-1) return -1;
   if(atom->tag[i]!=i_tag) return -1;
@@ -1153,6 +1182,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
   if(atom->tag[j]!=j_tag) return -1;
   jtype = type[j];
 
+  //search for the distance between i,j atoms in the bond list if they are bonded.
   bond_data *bo_ij;
   for( pk = Start_Index(i, lists+BONDS); pk < End_Index(i, lists+BONDS); ++pk ) {
       bo_ij = &( (lists+BONDS)->select.bond_list[pk] );
@@ -1166,7 +1196,7 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
         break;
       }
   }
-
+//search for the distance between i,j atoms in the far-neigh list if they are non-bonded.
   if(rij==0){
     far_neighbor_data *nbr_ij;
     for( pk = Start_Index(i, lists+FAR_NBRS); pk < End_Index(i, lists+FAR_NBRS); ++pk ) {
@@ -1182,7 +1212,8 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
       }
     }
   }
-  
+  /*if thet are not close to each other, calculate the distance between them manually
+    using lammps "get_distance" mathod.*/
   if(rij==0){
     xi[0]=x[i][0];
     xi[1]=x[i][1];
@@ -1194,14 +1225,14 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     rij=sqrt(d_sqr);
     cal_dist_flag=3;
   }
+  
+  //make sure the direction of the dalta vector is correct
   int sign;
   if((x[i][0]-x[j][0]) * dvec[0] > 0)  sign=-1;
   else  sign=1;
     
-  //OFEK
   //FOR DEBUGGING
-  //print the distance at the first 2 timesteps and at the last 2 timesteps
-  //if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
+  //print the distance each 1000 time steps
   if(count_bb_timesteps%1000==0 ){
   	printf("\ncal_dist_flag=%d",cal_dist_flag);
     if( (itype==1 && jtype==4))
@@ -1221,18 +1252,11 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
     else if( (itype==4 && jtype==2))
       printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
   }
-    
-  fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
-    
-  /*//calculate the F force vector for atom i
-  f_fourset[i_tag-1][0] += (delx*fpair)/rij;
-  f_fourset[i_tag-1][1] += (dely*fpair)/rij;
-  f_fourset[i_tag-1][2] += (delz*fpair)/rij;
-  //calculate the F force vector for atom j       
-  f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
-  f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
-  f_fourset[j_tag-1][2] -= (delz*fpair)/rij;*/
 
+  //make the calculation  
+  fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
+
+  //update the force vector for each atom
   workspace->f[i][0] -= sign*(dvec[0]*fpair)/rij;
   workspace->f[i][1] -= sign*(dvec[1]*fpair)/rij;
   workspace->f[i][2] -= sign*(dvec[2]*fpair)/rij;
@@ -1248,10 +1272,10 @@ double PairReaxC::compute_BB_pair(int i_tag, int j_tag){
 
 }
 /* ---------------------------------------------------------------------- */
-//this method gets:
-//1. tag, type of atom i and tag, type of atom j
-//2. the R(i,j)=the distance between them
-//returns the calculated force.
+/*this method gets:
+  1. tag, type of atom i and tag, type of atom j
+  2. the R(i,j)=the distance between them
+  returns the calculated force*/
 double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jtype, double rsq)
 {
   double force;
@@ -1260,8 +1284,8 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
   force = -2 * F1[itype][jtype] * temp * exp(temp * r);
   
   //FOR DEBUGGING
-  //OFEK
- // if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
+  //prints the parameters and the calculated values.
+  //if(count_bb_timesteps==1 || MAX_NUM_TIMESTEPS-count_bb_timesteps==1){
  /*if(count_bb_timesteps%1000==0){
     printf("atomi=%d, atomj=%d, rsq=%f", i, j , rsq);
     printf("\nitype=%d, jtype=%d, F1=%f, F2=%f", itype, jtype, F1[itype][jtype], F2[itype][jtype]);
@@ -1270,26 +1294,9 @@ double PairReaxC::single_BB(int i, int j, int itag, int jtag, int itype, int jty
   
   return force;
 }
-
 /* ---------------------------------------------------------------------- */
-//NEED??
-void PairReaxC::add_bb_potential(){
-  printf("in add_bb_potential\n");
-  if(flag_bb==0)
-    return;
-
-  for(int k = 0; k < system->N; ++k) {
-    int tag=system->my_atoms[k].orig_id;
-    if(tag>0){
-      workspace->f[k][0]+=f_fourset[tag-1][0];
-      workspace->f[k][1]+=f_fourset[tag-1][1];
-      workspace->f[k][2]+=f_fourset[tag-1][2];
-    }
-
-  }
-}
-/* ---------------------------------------------------------------------- */
-
+/*private method that recieve tag of atom and returns the "i" index of this atom in the atom list,
+  or -1 in case of error */
  int PairReaxC::tag_to_i(int tag){
    if( tag<0 || tag>atom->nlocal ) return -1;
    for(int i=0; i<atom->nlocal; i++){

@@ -60,24 +60,10 @@ class PairReaxC : public Pair {
   bigint ngroup;
   
   //mine
-  double **f_fourset;
-  double **F1,**F2, **wanted_dist;
-  void add_bb_potential();
-  int set_fourset(int**, int);
-  int set_extra_potential_parameters();
-  int **fourset;
-  int num_fourset;
-  int count_bb_timesteps;
-  int flag_bb;
-  int tag_to_i (int);
-  double compute_BB();
-  double compute_BB_pair(int, int);
-  double single_BB(int, int, int, int, int, int, double);
-  int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
-  FILE *energy_fp; //file that document the added energy to the system
-  FILE *parameters_fp; //file of the parameters of the extra potential
-  int calm_down;
-
+  double **F1,**F2, **wanted_dist; // F1, F2, R12 extra potential parameters
+  int set_fourset(int**, int); //get a founded fourset and apply the extra potentia on
+  int set_extra_potential_parameters(); // set  F1, F2, R12 from the user input file
+  int MAX_NUM_TIMESTEPS; //number of timesteps the potential works.
 
  protected:
   char *fix_id;
@@ -106,6 +92,20 @@ class PairReaxC : public Pair {
   int nmax;
   void FindBond();
   double memory_usage();
+
+  //mine
+  int **fourset; //the foursets we apply the extra potential on
+  int num_fourset; //the number of foursets we apply the extra potential on
+  int count_bb_timesteps; //how many timesteps we already apply the extra potential on the fourset
+  int flag_bb; //1 if we currently apply the extra potential on a fourset. else, 0.
+  int tag_to_i (int); //gets atom's Tag and return his i index in the atom list.
+  //methods that calculate the extra potential forces and energy.
+  double compute_BB();
+  double compute_BB_pair(int, int);
+  double single_BB(int, int, int, int, int, int, double);
+  FILE *energy_fp; //file that document the added energy to the system
+  FILE *parameters_fp; //file of the parameters of the extra potential
+  int calm_down; //create 1000 timesteps break after finish apply the extra potential
 
 };
 

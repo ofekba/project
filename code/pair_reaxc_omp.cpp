@@ -31,6 +31,9 @@
    W. Jiang, "Optimizing the performance of reactive molecular dynamics
    simulations for multi-core architectures", International Journal of
    High Performance Computing Applications, to appear.
+
+  Extra potential code addition:
+   Ofek Barazani (Azrieli college of engineering, ofek1b@gmail.com)
  ------------------------------------------------------------------------- */
 
 #include "pair_reaxc_omp.h"
@@ -112,7 +115,7 @@ PairReaxCOMP::PairReaxCOMP(LAMMPS *lmp) : PairReaxC(lmp), ThrOMP(lmp, THR_PAIR)
 
 PairReaxCOMP::~PairReaxCOMP()
 {
-  //OFEK
+  //ofek
   printf("\n\n*******out PairReaxCOMP*****\n\n");
   if (setup_flag) {
     reax_list * bonds = lists+BONDS;
@@ -187,9 +190,6 @@ void PairReaxCOMP::compute(int eflag, int vflag)
   double evdwl,ecoul;
   double t_start, t_end;
 
-  //ofek
-  //set_extra_potential_parameters();
-
   // communicate num_bonds once every reneighboring
   // 2 num arrays stored by fix, grab ptr to them
 
@@ -197,6 +197,8 @@ void PairReaxCOMP::compute(int eflag, int vflag)
   int *num_bonds = fix_reax->num_bonds;
   int *num_hbonds = fix_reax->num_hbonds;
 
+  //mine
+  //cool the system after operate the extra potential.
   if(calm_down>0){
     calm_down--;
   }
@@ -249,18 +251,26 @@ void PairReaxCOMP::compute(int eflag, int vflag)
   // mine
   double added_e=0; //the energy of the BB potential
 	if(flag_bb==1){
-    added_e=compute_BB();
+    //if the extra potential is working, calculate the energy & forces
+    //apply the extra potential on the fourset
     if(added_e==-1){
-      printf("\n\tERROR! FAILED OPERATE THE EXTRA POTENTIAL\n");
+      char str[128];
+      snprintf(str,128,"PAIR_REAXC.CPP: Failed operate the extra potential on the current fourset.");
+      error->one(FLERR,str);
       added_e=0;
     }
+    /*operate the extra potential and compute the energy it add to the system succefully,
+      update the system's energy var.*/
     eng_vdwl += added_e;
   }
+  //write the calculated energy to the file that document the extra potential energy addition to the system.
   if(energy_fp!=NULL)
     fprintf(energy_fp,"\n%f",added_e);
-  else
-    printf("cant write\n");
-    //OFEK ^^
+  else{
+    char str[128];
+      snprintf(str,128,"PAIR_REAXC.CPP: Failed to write to \"energy.reax\" file");
+      error->one(FLERR,str);
+  }
 
   read_reax_forces(vflag);
 
@@ -624,15 +634,19 @@ int PairReaxCOMP::write_reax_lists()
 
 void PairReaxCOMP::read_reax_forces(int /* vflag */)
 {
+  //if the extra potential is currently apply on fourset
   if(flag_bb==1){
+    //update the counter that count the timesteps we already apply the extra potential
     if(count_bb_timesteps<MAX_NUM_TIMESTEPS){
       count_bb_timesteps++;
     }
     else{
+      //if the counter achieve to the max value, finish apply the extra potential on this fourset.
       flag_bb=0;
       count_bb_timesteps=0;
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
+      //turn on the calm down flag, to cool the system for 1000 timesteps.
       calm_down=1000;
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
@@ -688,14 +702,11 @@ void PairReaxCOMP::FindBond()
 }
 
 /* ---------------------------------------------------------------------- */
+/* apply the extra potential on the 3 pairs from each fourset.
+  returns the  additional energy that the extra potential adds to the system. else, return -1*/
 /*
 double PairReaxCOMP::compute_BB(){
-  //printf("\nin computebb ()\n");
-  for (int i = 0; i < atom->nlocal; i++) {
-    for (int j = 0; j < 3; j++) {
-      f_fourset[i][j] = 0;
-    }
-  }
+
   double e=0; //the amount of the additional energy
 
   for(int k=0; k<num_fourset; k++){
@@ -714,19 +725,28 @@ double PairReaxCOMP::compute_BB(){
 } */
 
 /* ---------------------------------------------------------------------- */
-
+/*gets two atom's tags to calculate the force vector of the extra potential,
+  using multithreading to find their "i" index in the atom list, the distance between them, and their type,
+  using those parameters as an input for method that calculate the addition for their force vectors
+  on success, returns the calculated energy they add to the system. else, return -1.*/
 /* double PairReaxCOMP::compute_BB_pair(int i_tag, int j_tag){
  // if(update->ntimestep>1000 || update->ntimestep<1010) printf("\n\n\nin PairReaxCOMP::compute_BB_pair\n\n\n");
   
   int i,j,itype,jtype,pk,k;
-  double fpair, rij=0;
-  double **x = atom->x;
-  double **f = atom->f;
-  int *type = atom->type;
+  double fpair, rij=0; //rij=the distance between i,j atoms
+  double **x = atom->x; //atom's coordinates vector
+  double **f = atom->f; //atom's force vector
+  int *type = atom->type; //atom's type vector
+  //how the distance between i,j atoms calculated.
+   // 1=from the bonds list.
+   // 2=from the far neigh list.
+   // 3=manually calculation using "get_distance" method 
   int cal_dist_flag=0;
-  double d_sqr;
-  rvec dvec, xi, xj;
+  double d_sqr; //the distance^2 value
+  rvec dvec, xi, xj;//coordinates vector of their delta distance, of the i atom, of the j atom.
   
+  //Extract the i,j atoms coordinates and type information from the atom list
+  //by convert their tag into their "i" index in the atom list
   i=tag_to_i(i_tag);
   if(i==-1) return -1;
   if(atom->tag[i]!=i_tag) return -1;
@@ -737,6 +757,7 @@ double PairReaxCOMP::compute_BB(){
   if(atom->tag[j]!=j_tag) return -1;
   jtype = type[j];
 
+//search using multithreading for the distance between i,j atoms in the bond list if they are bonded.
   bond_data *bo_ij;
   #if defined(_OPENMP)
   #pragma omp parallel for schedule(static) default(shared)
@@ -753,7 +774,7 @@ double PairReaxCOMP::compute_BB(){
        // break;
       }
   }
-
+//search using multithreading for the distance between i,j atoms in the far-neigh list if they are non-bonded.
   if(rij==0){
     far_neighbor_data *nbr_ij;
   #if defined(_OPENMP)
@@ -772,7 +793,8 @@ double PairReaxCOMP::compute_BB(){
       }
     }
   }
-  
+  //if thet are not close to each other, calculate the distance between them manually
+    //using lammps "get_distance" mathod.
   if(rij==0){
     xi[0]=x[i][0];
     xi[1]=x[i][1];
@@ -784,14 +806,14 @@ double PairReaxCOMP::compute_BB(){
     rij=sqrt(d_sqr);
     cal_dist_flag=3;
   }
+
+  //make sure the direction of the dalta vector is correct
   int sign;
   if((x[i][0]-x[j][0]) * dvec[0] > 0)  sign=-1;
   else  sign=1;
     
-  //OFEK
   //FOR DEBUGGING
-  //print the distance at the first 2 timesteps and at the last 2 timesteps
-  //if(count_bb_timesteps<1 || count_bb_timesteps>MAX_NUM_TIMESTEPS-1 ){
+  //print the distance each 1000 time steps
   if(count_bb_timesteps%1000==0 ){
   	printf("\ncal_dist_flag=%d",cal_dist_flag);
     if( (itype==1 && jtype==4))
@@ -811,18 +833,10 @@ double PairReaxCOMP::compute_BB(){
     else if( (itype==4 && jtype==2))
       printf("\nThe distance between N (TAG=%d) ,H(TAG=%d) =%f\n", i_tag, j_tag, rij);
   }
-    
+  //make the calculation 
   fpair=single_BB(i, j, i_tag, j_tag, itype, jtype, rij);
     
-  // //calculate the F force vector for atom i
-  // f_fourset[i_tag-1][0] += (delx*fpair)/rij;
-  // f_fourset[i_tag-1][1] += (dely*fpair)/rij;
-  // f_fourset[i_tag-1][2] += (delz*fpair)/rij;
-  // //calculate the F force vector for atom j       
-  // f_fourset[j_tag-1][0] -= (delx*fpair)/rij;
-  // f_fourset[j_tag-1][1] -= (dely*fpair)/rij;
-  // f_fourset[j_tag-1][2] -= (delz*fpair)/rij;
-
+//update the force vector for each atom
   workspace->f[i][0] -= sign*(dvec[0]*fpair)/rij;
   workspace->f[i][1] -= sign*(dvec[1]*fpair)/rij;
   workspace->f[i][2] -= sign*(dvec[2]*fpair)/rij;

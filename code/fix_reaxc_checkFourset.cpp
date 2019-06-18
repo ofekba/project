@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Ofek Brazani (azrieli college of engineering address, ofek1b@gmail.com)
+   Contributing author: Ofek Brazani (Azrieli college of engineering, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #include <cstdlib>
