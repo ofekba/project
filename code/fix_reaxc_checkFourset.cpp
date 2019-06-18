@@ -57,7 +57,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   if (nevery <= 0 )
     error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal nevery");//**********
 
-//for dists fp
+//for dists fp that follow the distance between atoms
   if (me == 0) {
       char *suffix = strrchr(arg[4],'.');
       if (suffix && strcmp(suffix,".gz") == 0) {
@@ -80,6 +80,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
         error->one(FLERR,str);
       }
     }
+    //seperate the dists files into many files any this number of timesteps
    nevery_dists = force->inumeric(FLERR,arg[5]);
   if (nevery_dists <= 0 )
     error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal dists file nevery");//**********
@@ -136,7 +137,7 @@ void FixReaxCCheckFourset::init()
 }
 
 /* ---------------------------------------------------------------------- */
-//function that create a file that following the distance between all of the atoms.
+
 void FixReaxCCheckFourset::end_of_step()
 {
   Output_ReaxC_Bonds(update->ntimestep);
@@ -166,6 +167,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   }
 
   //TODO
+  //ofek
   int _nevery=10;
   int num_of_epons=int(atom->nlocal/58.5);
 

@@ -46,19 +46,19 @@ using namespace FixConst;
 FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg)
 {
+  //checking for correct usage with Fix ReaxC Check_Fourset command in the "in" file
   if (narg != 5) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
   ntypes = atom->ntypes;
   nmax = atom->nmax;
-  //printf("\n==================nmax=%d\n", nmax);//************
   
   nevery = force->inumeric(FLERR,arg[3]);
 
   if (nevery <= 0 )
     error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal nevery");//**********
 
-//for fp
+//for dists fp that follow the distance between atoms
   if (me == 0) {
       char *suffix = strrchr(arg[4],'.');
       if (suffix && strcmp(suffix,".gz") == 0) {
@@ -87,46 +87,26 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
 
   neigh_list=NULL;
   tag_to_i=NULL;
-  numneigh = NULL;
   fourset = NULL;
 
   allocate();
-  if(update->ntimestep==0){
-    printf("\n\n\n domain->box_exist=%d boxlo= %f %f %f boxhi= %f %f %f\n\n\n",domain->box_exist,domain->boxlo[0],domain->boxlo[1],domain->boxlo[2],domain->boxhi[0],domain->boxhi[1],domain->boxhi[2]);
-  }
-  box_x_len=abs(domain->boxlo[0])+abs(domain->boxhi[0]);
-  box_y_len=abs(domain->boxlo[1])+abs(domain->boxhi[1]);
-  box_z_len=abs(domain->boxlo[2])+abs(domain->boxhi[2]);
-  printf("box bounderies %d %d %d\n",box_x_len,box_y_len,box_z_len);
-  box_xhi=domain->boxhi[0];
-  box_yhi=domain->boxhi[1];
-  box_zhi=domain->boxhi[2];
-  box_xlo=domain->boxlo[0];
-  box_ylo=domain->boxlo[1];
-  box_zlo=domain->boxlo[2];
-
-
 }
 
 /* ---------------------------------------------------------------------- */
 
 FixReaxCCheckFourset::~FixReaxCCheckFourset()
 {
-  //printf("\n****in destructor*****\n");
   MPI_Comm_rank(world,&me);
   destroy();
   if (me == 0) fclose(fp);
-  //printf("\n*-*-*-*finish the fix of ofki ofkilish :)*-*-*-*\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
 int FixReaxCCheckFourset::setmask()
 {
-  //printf("\n*****in setmask*****\n");
   int mask = 0;
   mask |= END_OF_STEP;
- // printf("\n****out setmask*****\n");
   return mask;
 }
 
@@ -134,123 +114,63 @@ int FixReaxCCheckFourset::setmask()
 
 void FixReaxCCheckFourset::setup(int /*vflag*/)
 {
-  //printf("\n****in setup*****\n");
   end_of_step();
-  //printf("\n****out setup*****\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void FixReaxCCheckFourset::init()
 {
+  //reaxc singelton instance
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
   if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
-  reaxc->set_extra_potential_parameters(); 
+  reaxc->set_extra_potential_parameters(); //set the parameter of the extra potential from the user input file
 }
 
 /* ---------------------------------------------------------------------- */
-//function that create a file that following the distance between all of the atoms.
+
 void FixReaxCCheckFourset::end_of_step()
 {
-  //printf("\n****in end_of_step*****\n");
   Output_ReaxC_Bonds(update->ntimestep);
   followDistFunc();
   if (me == 0) fflush(fp);
-  //printf("\n****out end_of_step*****\n");
 }
 
 /* ---------------------------------------------------------------------- */
 
 void FixReaxCCheckFourset::Output_ReaxC_Bonds(bigint /*ntimestep*/)
 {
-  //printf("\n****in Output_ReaxC_Bonds*****\n");
   int i, j;
-
-  //printf("\n****** 1 ******\n");
-  /*if (atom->nmax > nmax) {
-    destroy();
-    nmax = atom->nmax;
-     printf("\n==================nmax num 2=%d\n", nmax);//************
-    allocate();
-  }*/
+  //reset the neigh struct 
   for (i = 0; i < atom->nlocal; i++) {
-    numneigh[i] = 0;
     for (j = 0; j < atom->nlocal; j++) {
       neigh_list[i][j]=-1;
     }
   }
- // printf("\n****** 2 ******\n");
-
+  //check for distances
   FindNbr(lists);
-  //printf("\n****** 4 ******\n");
+  //edit distance file
   checkForFoursets();
-
-  //printf("\n=======finish Output_ReaxC_Bonds=====\n");//************Nbr
 
 }
 
 /* ---------------------------------------------------------------------- */
 
 
-/*
-   - list->inum  = the length of the neighborlists list.
-   - list->ilist  = list list of "i" atoms for which neighbor lists exist.
-   - list->numneigh = the length of each these neigbor list.
->  - list->firstneigh = the pointer to the list of neighbors of "i".
-*/
-
-
 
 void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
 {
- // printf("\n=========in FindNbr=========\n");//************
-  int nlocal_tot = static_cast<int> (atom->nlocal);
+  int nlocal_tot = static_cast<int> (atom->nlocal); //number of atoms in the system
   if (atom->nmax > nmax) {
     nmax = atom->nmax;
-    //printf("\n==================nmax is=%d\n", nmax);//************
   }
-  //printf("\n==================nlocal_tot=%d \n", nlocal_tot);
   
-
+//update tag to i array (to convert tag to i index in the atom list)
   for(int i=0; i<atom->nlocal; i++){
     int tag=atom->tag[i];
     tag_to_i[tag-1]=i;
   }
-
-//NEIGH LIST BY CALCULATE DISTANCES
-
-/*  double x0, x1, x2;
-  double del0, del1, del2;
-  double dist;
-  for( int i = 0; i < atom->nlocal; ++i ){
-    x0=atom->x[i][0];
-    x1=atom->x[i][1];
-    x2=atom->x[i][2];
-    for( int j = 0; j < atom->nlocal; ++j ){
-      del0=x0-atom->x[j][0];
-      del1=x1-atom->x[j][1];
-      del2=x2-atom->x[j][2];
-      dist=del0*del0+del1*del1+del2*del2;
-      dist=sqrt(dist);
-      neigh_list[atom->tag[i]-1][atom->tag[j]-1]=dist;
-    }
-  }
-  if(update->ntimestep<1){
-    for(int i=8; i<10; i++){
-      //nlocal_tot
-        printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
-        for(int j=0; j<nlocal_tot; j++){
-          printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
-        }
-        printf("|\n\n");
-    }
-  }*/
-
-
-  /*for(int i=0; i<117; i++)
-    for(int j=0; j<117; j++)
-      neigh_list[i][j]=0.0;*/
   
   //NEIGH LIST BY FAR NEIGH LIST STRUCT
   int i, j, pj;
@@ -279,14 +199,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       nbr_pj = &( far_nbrs->select.far_nbr_list[pj] );
       j = nbr_pj->nbr;
       atom_j = &(reaxc->system->my_atoms[j]);
-      if(update->ntimestep>=11100 && update->ntimestep>=11105){
-        if((atom_i->orig_id==28 && atom_i->orig_id==54) || (atom_i->orig_id==54 && atom_i->orig_id==28))
-          printf("\n\n54-28 dist=%f\n", nbr_pj->d);
-        if((atom_i->orig_id==54 && atom_i->orig_id==52) || (atom_i->orig_id==52 && atom_i->orig_id==54))
-          printf("54-52 dist=%f\n", nbr_pj->d);
-        if((atom_i->orig_id==52 && atom_i->orig_id==8) || (atom_i->orig_id==8 && atom_i->orig_id==52))
-          printf("52-8 dist=%f\n", nbr_pj->d);
-      }
+  
       if (nbr_pj->d <= 8.0){
         //add to neigh list
         iii=tag_to_i[atom_i->orig_id-1];
@@ -310,27 +223,12 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   }
   
 
-
-
-
-    // PRINTS FOR DEBUGGING
-
-    //print the neighbors list
-  /* if(update->ntimestep<1){
-      for(i=0; i<nlocal_tot; i++){
-          printf("___neigh of %d, num neigh:%d___\n", i+1,  numneigh[i]);
-          for(j=0; j<nlocal_tot; j++){
-            printf("|id=%d, distance=%f",j+1, neigh_list[i][j]);
-          }
-          printf("|\n\n");
-      }
-    }*/
-
-    //  printf("\n=============finish FindNbr=========\n");
 }
 
 /* ---------------------------------------------------------------------- */
-
+/* search for foursets that meets the paper conditions for legal fourset
+to apply the extra potential on, and the condition on O-C pairs
+(C atom that bonded only to one O atom) */
 void FixReaxCCheckFourset::checkForFoursets(){
   
   //printf("\n============in checkFourset===============\n");
@@ -356,7 +254,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
   int const THIRD_TYPE=4;// N TYPE  NUM
   int const FORTH_TYPE=1;// C TYPE  NUM
   
-  
+  //choose fourset to apply the potential on with the smallest OH CN distances
   double n_8_min_oh_cn=17;
   double n_9_min_oh_cn=17;
   double min_oh_cn=17;
@@ -375,7 +273,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
         b_type = atom->type[i]; 
         if(b_type==SECOND_TYPE){
           if( 1.3<neigh_list[a][b] && neigh_list[a-1][b]<8.0 ){
-            //printf("\nfirst cond OK\n");//**********
+            //found legal O-H
             for (c = 0; c < nlocal; c++) {
               c_tag = c+1; 
               i=tag_to_i[c_tag-1];
@@ -384,7 +282,7 @@ void FixReaxCCheckFourset::checkForFoursets(){
               c_type = atom->type[i]; 
               if(c_type==THIRD_TYPE){
                 if( 0.8<neigh_list[b][c] && neigh_list[b][c]<1.3 ){
-                  //printf("\nsecond cond OK\n");//**********
+                  //found legal N-H
                   for(d = 0; d < nlocal; d++) {
                     d_tag = d+1;
                     i=tag_to_i[d_tag-1];
@@ -393,9 +291,10 @@ void FixReaxCCheckFourset::checkForFoursets(){
                     d_type = atom->type[i];
                     if(d_type==FORTH_TYPE){
                       if( 3.0<neigh_list[c][d] && neigh_list[c][d]<8.0 ){
-                       // printf("\nthird cond OK\n");//**********
+                       //found legal N-C
                         if( 0.9<neigh_list[d_tag-1][a_tag-1] && neigh_list[d_tag-1][a_tag-1]<2.2 ) {
-                          //printf("\nfourth cond OK\n");//**********
+                          //found legal C-O
+                          
                           //code for level1 run
                           /*if(neigh_list[a][b]+neigh_list[c][d]<n_8_min_oh_cn){
                             n_8_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
@@ -424,8 +323,6 @@ void FixReaxCCheckFourset::checkForFoursets(){
                               fourset[0][2]=c_tag; //N
                               fourset[0][3]=d_tag; //C
                               num_fourset++;
-                              //if(update->ntimestep>6000)
-                                //printf("fourset- %d %d %d %d",a_tag,b_tag,c_tag,d_tag);
                             }
                             else if(neigh_list[a][b]+neigh_list[c][d]<n_9_min_oh_cn && c_tag==90){
                               n_9_min_oh_cn=neigh_list[a][b]+neigh_list[c][d];
@@ -435,16 +332,6 @@ void FixReaxCCheckFourset::checkForFoursets(){
                               fourset[1][3]=d_tag; //C
                               num_fourset++;
                             }
-                            //printf("**** success! ****\n") ; 
-
-                            //random choice
-                            /*fourset[num_fourset][0]=a_tag; //O
-                            fourset[num_fourset][1]=b_tag; //H
-                            fourset[num_fourset][2]=c_tag; //N
-                            fourset[num_fourset][3]=d_tag; //C
-                            num_fourset++;*/
-
-
                           }
                         }
                       }
@@ -458,13 +345,12 @@ void FixReaxCCheckFourset::checkForFoursets(){
       }
     }
   }
- // printf("finish over the neigh list\n");
 
-int apply_flag=0;
+
+int apply_flag=0; //turn to 1 if the reaxc apply the extra potential on the chosen fourset. else, 0
   //operate the extra potential
   if(num_fourset>0){
     
-
     //for level1 run
     /*apply_flag=reaxc->set_fourset(fourset, 1);
     if(apply_flag==1){
@@ -495,7 +381,7 @@ int apply_flag=0;
         return;
     }
 
-  //for level2 run
+  //for any level2 run
     if(n_8_min_oh_cn<17 && n_9_min_oh_cn<17){
       if(n_8_min_oh_cn>n_9_min_oh_cn){
         fourset[0][0]=fourset[1][0]; //O
@@ -545,42 +431,13 @@ int apply_flag=0;
     }*/
     apply_flag=reaxc->set_fourset(fourset, 1);
     if(apply_flag==1){
-      printf("\nrand_num %d\n",rand_num);
       fprintf(fp,"# fourset O H N C at timestep " BIGINT_FORMAT " : ",update->ntimestep);
       fprintf(fp,"1/1- %d %d %d %d \n",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
     }
 
   }
-    //FOR DEBUGGING
-    /*if(apply_flag==1){
-      double **x = atom->x;
-      printf("\nOH=%f, CN=%f\n", neigh_list[fourset[0][0]-1][fourset[0][1]-1], neigh_list[fourset[0][2]-1][fourset[0][3]-1]);
-      i=tag_to_i[fourset[0][0]-1];
-      double xtmp = x[i][0];
-      double ytmp = x[i][1];
-      double ztmp = x[i][2];
-      int j=tag_to_i[fourset[0][1]-1];
-      double delx = xtmp - x[j][0];
-      double dely = ytmp - x[j][1];
-      double delz = ztmp - x[j][2];
-      double rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-      double roh=sqrt(rsq);
-
-      i=tag_to_i[fourset[0][2]-1];
-       xtmp = x[i][0];
-       ytmp = x[i][1];
-       ztmp = x[i][2];
-      j=tag_to_i[fourset[0][3]-1];
-       delx = xtmp - x[j][0];
-       dely = ytmp - x[j][1];
-       delz = ztmp - x[j][2];
-      rsq = delx*delx + dely*dely + delz*delz; //distance^2 between 2 atoms
-      float rcn=sqrt(rsq);
-      printf("\nOH=%f, CN=%f\n", roh, rcn);
-    }*/
       
-    //print the foursets
-    //f(update->ntimestep<1){
+    //OPTIONAL: print the foursets he found.
     if(apply_flag==1){
       for(int i=0; i<num_fourset;i++){
         printf("fourset #%d is: ", i);
@@ -591,12 +448,10 @@ int apply_flag=0;
       printf("\n");
     }
   
-
-  //printf("\n\n==========finish checkFourset func=============\n");
 }
 
 /* ---------------------------------------------------------------------- */
-
+/* document distances between each two atoms to the dists file */
 void FixReaxCCheckFourset::followDistFunc()
 {
   int _nevery=10;
@@ -607,64 +462,6 @@ void FixReaxCCheckFourset::followDistFunc()
   }
   if(update->ntimestep%_nevery!=0)
     return;
-  /*double x0, x1, x2;
-  double j0, j1, j2;
-  double del0, del1, del2;
-  double dist;
-  int num_of_epons=int(atom->nlocal/58.5);
-  fprintf(fp,"# Timestep " BIGINT_FORMAT " \n",update->ntimestep);
-  for( int i = 0; i < atom->nlocal; ++i ){
-    //level1-no if, level2-first, level2 noPBC-second line
-    if(atom->tag[i]==8 ||atom->tag[i]==28 || atom->tag[i]==92 || atom->tag[i]==96 || atom->tag[i]==53 || atom->tag[i]==49 || atom->tag[i]==9|| atom->tag[i]==52|| atom->tag[i]==54|| atom->tag[i]==29|| atom->tag[i]==30|| atom->tag[i]==95|| atom->tag[i]==97){
-    //if(atom->tag[i]==84 ||atom->tag[i]==90 || atom->tag[i]==60 || atom->tag[i]==76 || atom->tag[i]==59|| atom->tag[i]==88|| atom->tag[i]==102|| atom->tag[i]==103|| atom->tag[i]==99 || atom->tag[i]==91 || atom->tag[i]==94 ){
-
-      fprintf(fp,"# atom %d type %d ",atom->tag[i], atom->type[i]);
-      x0=atom->x[i][0];
-      x1=atom->x[i][1];
-      x2=atom->x[i][2];
-      for( int j = 0; j < atom->nlocal; ++j ){
-          j0=atom->x[j][0];
-          j1=atom->x[j][1];
-          j2=atom->x[j][2];
-
-          del0=x0-j0;
-          del1=x1-j1;
-          del2=x2-j2;
-          
-         if( (abs(box_xhi-x0)<=3.2 && abs(box_xlo-j0)<=3.2) || (abs(box_xhi-j0)<=3.2 && abs(box_xlo-x0)<=3.2)){ 
-            if(del0>0)
-              del0-= box_x_len;
-            else
-              del0+= box_x_len;
-          }
-          if( (abs(box_yhi-x1)<=3.2 && abs(box_ylo-j1)<=3.2) || (abs(box_yhi-j1)<=3.2 && abs(box_ylo-x1)<=3.2)){
-            if(del1>0)
-              del1-= box_y_len;
-            else
-              del1+= box_y_len;
-          }
-          if( (abs(box_zhi-x2)<=3.2 && abs(box_zlo-j2)<=3.2) || (abs(box_zhi-j2)<=3.2 && abs(box_zlo-x2)<=3.2)){
-            if(del2>0)
-              del2-= box_z_len;
-            else
-              del2+= box_z_len;
-          }
-
-          dist=del0*del0+del1*del1+del2*del2;
-          dist=sqrt(dist);
-          fprintf(fp,"%d %f ",atom->tag[j], dist);
-          //ofek
-         // if(update->ntimestep>=10 && update->ntimestep<=20 && ((atom->tag[i]==53 && atom->tag[j]==70) || (atom->tag[i]==70 && atom->tag[j]==53)))
-          //  printf("\n\t atom1 %d: x1 %f y1 %f z1 %f atom2 %d: x2 %f y2 %f z2 %f \ndelx %f dely %f delz %f dist %f\n",atom->tag[i], x0, x1, x2, atom->tag[j], atom->x[j][0], atom->x[j][1], atom->x[j][2], del0, del1, del2, dist);
-          //if(j==i && update->ntimestep==50){
-          //  printf(tag i=%d, )
-         // }
-      }
-      fprintf(fp,"\n");
-    }
-  }
-  fprintf(fp,"#\n");*/
-
 
 //NEIGH LIST BY FAR NEIGH LIST STRUCT
   if(fp!=NULL) fprintf(fp,"# Timestep " BIGINT_FORMAT " ",update->ntimestep);
@@ -717,7 +514,6 @@ void FixReaxCCheckFourset::followDistFunc()
             fprintf(fp,"%d %f ",tag_i2, nbr_p_bond->d);
         }
       }
-   // if(fp!=NULL) fprintf(fp,"\n"); 
     }
   }
   if(fp!=NULL) fprintf(fp,"\n#\n");
@@ -739,11 +535,8 @@ int FixReaxCCheckFourset::nint(const double &r)
 void FixReaxCCheckFourset::destroy()
 {
   memory->destroy(neigh_list);
-  memory->destroy(numneigh);
   memory->destroy(fourset);
   memory->destroy(tag_to_i);
-  
-
 }
 
 /* ---------------------------------------------------------------------- */
@@ -752,7 +545,6 @@ void FixReaxCCheckFourset::allocate()
 {
   memory->create(fourset,20,4,"reax/c/checkFourset:fourset");//***************
   memory->create(neigh_list,atom->nlocal,atom->nlocal,"reax/c/checkFourset:neigh_list");
-  memory->create(numneigh,atom->nlocal,"reax/c/checkFourset:numneigh");
   memory->create(tag_to_i,atom->nlocal,"reax/c/checkFourset:tag_to_i");
 
 }
@@ -762,12 +554,9 @@ void FixReaxCCheckFourset::allocate()
 double FixReaxCCheckFourset::memory_usage()
 {
   double bytes;
-  //bytes = 3.0*nmax*sizeof(double);//??
-  bytes = atom->nlocal*sizeof(int);//numneigh
   bytes += atom->nlocal*sizeof(int);//tag_to_i
   bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
   bytes += 1.0*atom->nlocal*atom->nlocal*sizeof(double);//neigh_list
-
   return bytes;
 }
 

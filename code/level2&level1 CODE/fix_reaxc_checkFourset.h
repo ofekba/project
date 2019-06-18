@@ -37,13 +37,10 @@ class FixReaxCCheckFourset : public Fix {
 
  protected:
   int me, nprocs, nmax, ntypes, maxsize;
-  int *numneigh; // list of numneigh for each atom
   int **fourset; //list of fourset to appky tha potential on
   int num_fourset; //0 if the list is empty. else, number of fourset
   double **neigh_list;
   int *tag_to_i;
-  int box_x_len, box_y_len, box_z_len;
-  int box_xhi, box_yhi, box_zhi,box_xlo,box_ylo,box_zlo;
 
   void allocate();
   void destroy();
