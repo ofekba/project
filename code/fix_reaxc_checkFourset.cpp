@@ -105,7 +105,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   fourset = NULL;
   o_c_pair_tags = NULL;
   n_tags=NULL;
-  MAX_NUM_FOURSETS=2000;
+  MAX_NUM_FOURSETS=atom->nlocal;
 
   allocate(); //allocate all the memory for each struct.
   strcpy(fp_suffix,arg[4]); //define the suffix for each dists file that follow dists between reactive atoms
@@ -184,17 +184,19 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
 
   //TODO
   //ofek
+  int _nevery=10;
+  int num_of_epons=int(atom->nlocal/58.5);
+
   //do it only each nevery timestep
   if(update->ntimestep%nevery_cond_check!=0)
     return;
 
 
   //document distances every this many steps only
-  int to_write_flag=0;
-  if(update->ntimestep%nevery_dists_follow==0)  to_write_flag=1;
+  int doc_dists_flag=0;
+  if(update->ntimestep%nevery_dists_follow==0)  doc_dists_flag=1;
 
   if(fp!=NULL){
-    //printf("\nI've got less 99 bugs without you\n");
     //writing the header of the dists file
     if(update->ntimestep==0){
       fprintf(fp,"# totalTimesteps " BIGINT_FORMAT " \n",update->laststep);
@@ -214,7 +216,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       fp = fopen(fp_name,"w");
     }
     //write to the dists file the current time step as header to this timestep distances list
-    if(fp!=NULL && to_write_flag==1)
+    if(fp!=NULL && doc_dists_flag==1)
       fprintf(fp,"\n# Timestep " BIGINT_FORMAT ,update->ntimestep);
   }
 
@@ -225,6 +227,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   const int TYPE_N = 3;
   const int EPON_SIZE = 43;
   const int DETDA_SIZE = 31;
+  
   
   //i1= O atom, i2= H atom, i3= N atom, i4= C atom
   int pi1, pi2, pi3, pi4; //the index value of each atom in the list
@@ -254,7 +257,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     tag_i1 = atom_i1->orig_id;
     if(tag_i1<0) continue;
 
-    if(to_write_flag==1){
+    if(doc_dists_flag==1){
       /* writing to the dists file distance only between O,C,N atoms known as legal candidate
         for foursets atoms to the rest of all atoms from their own far-neigh-list and bond-list*/
       if(fp!=NULL){
@@ -263,16 +266,16 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
           if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
             writing_flag=1;
         }
+
         if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
           writing_flag=1;
+
         if(writing_flag==1)
           fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
         else continue;
       }
            
     //follow this atom neigh lists to write his distances from the rest of the atoms.
-      start_o = Start_Index(_o, far_nbrs);
-      end_o   = End_Index(_o, far_nbrs);
       start_12 = Start_Index(_o, bond_nbrs);
       end_12   = End_Index(_o, bond_nbrs);
 
@@ -297,6 +300,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         }
       }
     }
+      start_o = Start_Index(_o, far_nbrs);
+      end_o   = End_Index(_o, far_nbrs);
     
     //follow and write far neigh distances.
     for( pi1 = start_o; pi1 < end_o; ++pi1 ) {
@@ -306,7 +311,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       type_i2= atom_i2->type;
       tag_i2 = atom_i2->orig_id;
 
-      if(fp!=NULL && tag_i2>0 && to_write_flag==1){
+      if(fp!=NULL && tag_i2>0 && doc_dists_flag==1){
         int writing_flag=0;
         for(int wf=0; wf<4; wf++){
           if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
@@ -419,7 +424,6 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
         fprintf(fp,"1/1- %d %d %d %d",fourset[0][0], fourset[0][1], fourset[0][2], fourset[0][3]);
       }
     }
-    printf("\nout FindNbr\n");
   
 }
 
@@ -449,8 +453,7 @@ void FixReaxCCheckFourset::allocate()
 {
   memory->create(fourset,MAX_NUM_FOURSETS,4,"reax/c/checkFourset:fourset");//***************
   memory->create(o_c_pair_tags,4,2,"reax/c/checkFourset:o_c_pair_tags");//***************
-  //memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
-  n_tags = new int[2];
+  memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
   memory->create(fp_suffix,100,"reax/c/checkFourset:fp_suffix");//***************
 }
 
@@ -460,7 +463,7 @@ double FixReaxCCheckFourset::memory_usage()
 {
   double bytes;
   //bytes = 3.0*nmax*sizeof(double);
-  bytes += 1.0*atom->nlocal*4*sizeof(int);//fourset
+  bytes += 1.0*MAX_NUM_FOURSETS*4*sizeof(int);//fourset
   bytes += 1.0*4*2*sizeof(int);//o_c_pair_tags
   bytes += 1.0*2*sizeof(int);//n_tags
   bytes += 1.0*100*sizeof(char);//fp_suffix
