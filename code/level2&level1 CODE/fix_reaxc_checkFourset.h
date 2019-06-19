@@ -39,8 +39,8 @@ class FixReaxCCheckFourset : public Fix {
   int me, nprocs, nmax, ntypes, maxsize;
   int **fourset; //list of fourset to appky tha potential on
   int num_fourset; //0 if the list is empty. else, number of fourset
-  double **neigh_list;
-  int *tag_to_i;
+  double **neigh_list; //list of neigh for each atom
+  int *tag_to_i; //array that convert tag to i index in the atom list.
 
   void allocate();
   void destroy();
@@ -48,10 +48,9 @@ class FixReaxCCheckFourset : public Fix {
   void FindNbr(struct _reax_list*);
   int nint(const double &);
   virtual double memory_usage();
-  void checkForFoursets(); //*****my func*****
-  int from_tag_to_i(tagint tag);//*****my func*****
-  FILE *fp;
-  void followDistFunc();
+  void checkForFoursets(); //check for legal foursets to apply the extra potential on.
+  FILE *fp; //fp for the dists file
+  void followDistFunc(); //write to the dists file the neigh_list
 
   bigint nvalid, nextvalid();
   struct _reax_list *lists;

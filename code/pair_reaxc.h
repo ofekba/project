@@ -19,6 +19,9 @@
    H. M. Aktulga, J. C. Fogarty, S. A. Pandit, A. Y. Grama,
    "Parallel Reactive Molecular Dynamics: Numerical Methods and
    Algorithmic Techniques", Parallel Computing, in press.
+
+   Extra potential code addition:
+   Ofek Barazani (Azrieli college of engineering, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #ifdef PAIR_CLASS

@@ -19,6 +19,9 @@
    H. M. Aktulga, J. C. Fogarty, S. A. Pandit, A. Y. Grama,
    "Parallel Reactive Molecular Dynamics: Numerical Methods and
    Algorithmic Techniques", Parallel Computing, in press.
+
+  Extra potential code addition:
+   Ofek Barazani (Azrieli college of engineering, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #ifdef PAIR_CLASS
@@ -64,22 +67,10 @@ class PairReaxC : public Pair {
   bigint ngroup;
 
   //mine
-  double **f_fourset;
-  double **F1,**F2, **wanted_dist;
-  void add_bb_potential();
-  int set_fourset(int**, int);
-  void set_extra_potential_parameters();
-  int **fourset;
-  int num_fourset;
-  int count_bb_timesteps;
-  int flag_bb;
-  int *tag_to_i;
-  double compute_BB();
-  double compute_BB_pair(int, int);
-  double single_BB(int, int, int, int, double);
+  double **F1,**F2, **wanted_dist;// F1, F2, R12 extra potential parameter
+  int set_fourset(int**, int);//get a founded fourset and apply the extra potentia on
+  int set_extra_potential_parameters();// set  F1, F2, R12 from the user input file
   int MAX_NUM_TIMESTEPS; //number of time steps the the potential works.
-  FILE *energy_fp; //file that document the added energy to the system
-  FILE *parameters_fp; //file of the parameters of the extra potential
 
  protected:
   double cutmax;
@@ -107,6 +98,21 @@ class PairReaxC : public Pair {
   int nmax;
   void FindBond();
   double memory_usage();
+
+  //mine
+  double **f_fourset; //this struct hold the force that the etra potential add to each atom's force vector
+  int **fourset;//the foursets we apply the extra potential on
+  int num_fourset;//the number of foursets we apply the extra potential on
+  int count_bb_timesteps; //how many timesteps we already apply the extra potential on the fourset
+  int flag_bb; //1 if we currently apply the extra potential on a fourset. else, 0.
+  int *tag_to_i;//convert atom's Tag to his i index in the atom list.
+  FILE *energy_fp; //file that document the added energy to the system
+  FILE *parameters_fp; //file of the parameters of the extra potential
+  //methods that calculate the extra potential forces and energy.
+  double compute_BB();
+  double compute_BB_pair(int, int);
+  double single_BB(int, int, int, int, double);
+  void add_bb_potential();//add the force that the extra potential adds to the force vector of each atom
 
 };
 

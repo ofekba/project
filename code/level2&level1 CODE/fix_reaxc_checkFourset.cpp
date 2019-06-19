@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Ray Shan (Sandia, tnshan@sandia.gov)
+    Contributing author: Ofek Brazani (Azrieli college of engineering, ofek1b@gmail.com)
 ------------------------------------------------------------------------- */
 
 #include <cstdlib>
@@ -125,7 +125,10 @@ void FixReaxCCheckFourset::init()
   reaxc = (PairReaxC *) force->pair_match("reax/c",0);
   if (reaxc == NULL) error->all(FLERR,"Cannot use fix reax/c/checkFourset without "
                                 "pair_style reax/c, reax/c/kk, or reax/c/omp");
-  reaxc->set_extra_potential_parameters(); //set the parameter of the extra potential from the user input file
+  int flag= reaxc->set_extra_potential_parameters(); //set the parameter of the extra potential from the user input file
+  if(flag==-1){
+    error->all(FLERR,"Illegal extra_potential_parameters file reax/c command");
+  }
 }
 
 /* ---------------------------------------------------------------------- */
