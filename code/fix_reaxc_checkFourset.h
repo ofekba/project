@@ -35,6 +35,7 @@ class FixReaxCCheckFourset : public Fix {
   virtual void init();
   void setup(int);
   void end_of_step();
+  int MAX_NUM_FOURSETS=2000;
 
  protected:
   int me, nprocs, nmax, ntypes, maxsize;

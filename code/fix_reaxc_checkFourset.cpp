@@ -232,7 +232,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   num_fourset = 0;
 
   //reset the neigh lists
-  for(int nn=0; nn<atom->nlocal; nn++){
+  for(int nn=0; nn<MAX_NUM_FOURSETS; nn++){
     fourset[nn][0]=0;
     fourset[nn][1]=0;
     fourset[nn][2]=0;
@@ -310,6 +310,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       /* if type_i1==O and type_i2==H look for fourset.
         else, continue write the distances file*/
       if(type_i1 != TYPE_O || type_i2 != TYPE_H) continue;
+      //foursets list is full
+      if(num_fourset>=MAX_NUM_FOURSETS) continue;
 
       //if O-H distance meets the paper condition, look for N atom
       if (1.3 <= nbr_p_oh->d && nbr_p_oh->d <= 8.0 ){
@@ -352,12 +354,14 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
                   if(nbr_p_co->nbr != _o) continue;
                   //if C-O meets the paper condition, we found legal fourset.
                   if (0.9 <= nbr_p_co->d && nbr_p_co->d <= 2.2 ){
-                    //add the fourset to the foursets list
-                    fourset[num_fourset][0] = atom_i1->orig_id;
-                    fourset[num_fourset][1] = atom_i2->orig_id;
-                    fourset[num_fourset][2] = atom_i3->orig_id;
-                    fourset[num_fourset][3] = atom_i4->orig_id;
-                    num_fourset++;
+                    if(num_fourset<MAX_NUM_FOURSETS){
+                      //add the fourset to the foursets list
+                      fourset[num_fourset][0] = atom_i1->orig_id;
+                      fourset[num_fourset][1] = atom_i2->orig_id;
+                      fourset[num_fourset][2] = atom_i3->orig_id;
+                      fourset[num_fourset][3] = atom_i4->orig_id;
+                      num_fourset++;
+                    }
                   }
                 }
               }
@@ -431,7 +435,7 @@ void FixReaxCCheckFourset::destroy()
 
 void FixReaxCCheckFourset::allocate()
 {
-  memory->create(fourset,atom->nlocal,4,"reax/c/checkFourset:fourset");//***************
+  memory->create(fourset,MAX_NUM_FOURSETS,4,"reax/c/checkFourset:fourset");//***************
   memory->create(o_c_pair_tags,4,2,"reax/c/checkFourset:o_c_pair_tags");//***************
   memory->create(n_tags,2,"reax/c/checkFourset:n_tags");//***************
   memory->create(fp_suffix,100,"reax/c/checkFourset:fp_suffix");//***************
