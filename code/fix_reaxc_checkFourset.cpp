@@ -46,7 +46,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg)
 {
   //check if the command in the "in" file is legal
-  if (narg != 6) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
+  if (narg != 7) error->all(FLERR,"Illegal fix reax/c/checkFourset command");
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
   ntypes = atom->ntypes;
@@ -80,9 +80,16 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
         error->one(FLERR,str);
       }
     }
+
+//follow distances and document them every this many steps
+   nevery_dists_follow = force->inumeric(FLERR,arg[5]);
+  if (nevery_dists_follow <= 0 )
+    error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal follow dists nevery");//**********
+
+
     //seperate the dists files into many files any this number of timesteps
-   nevery_dists = force->inumeric(FLERR,arg[5]);
-  if (nevery_dists <= 0 )
+   nevery_file_dists = force->inumeric(FLERR,arg[6]);
+  if (nevery_file_dists <= 0 )
     error->all(FLERR,"Illegal fix reax/c/checkFourset command, illigal dists file nevery");//**********
 
 
@@ -175,6 +182,10 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   if(update->ntimestep%_nevery!=0)
     return;
 
+  //document distances every this many steps only
+  int to_write_flag=0;
+  if(update->ntimestep%nevery_dists_follow==0)  to_write_flag=1;
+
   if(fp!=NULL){
     //writing the header of the dists file
     if(update->ntimestep==0){
@@ -183,20 +194,18 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       fprintf(fp,"# fix_nevery %d",_nevery);
     }
     //create new dists file to write to with the same suffix.
-    if(update->ntimestep%nevery_dists==0 && update->ntimestep>0){
+    if(update->ntimestep%nevery_file_dists==0 && update->ntimestep>0){
       fclose(fp);
       char fp_name[100];
       strcpy(fp_name,fp_suffix);
       strcat(fp_name,".");
-      printf("\n\n*****fp_name: %s\n\n\n",fp_name);
       char ts[20];
       sprintf(ts, "%d", update->ntimestep);
       strcat(fp_name,ts);
-      printf("\n\n*****fp_name: %s\n\n\n",fp_name);
       fp = fopen(fp_name,"w");
     }
     //write to the dists file the current time step as header to this timestep distances list
-    if(fp!=NULL)
+    if(fp!=NULL && to_write_flag==1)
       fprintf(fp,"\n# Timestep " BIGINT_FORMAT ,update->ntimestep);
   }
  
@@ -234,46 +243,47 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
     atom_i1 = &(reaxc->system->my_atoms[_o]);
     type_i1  = atom_i1->type;
     tag_i1 = atom_i1->orig_id;
-    
-    /* writing to the dists file distance only between O,C,N atoms known as legal candidate
-      for foursets atoms to the rest of all atoms from their own far-neigh-list and bond-list*/
-    if(fp!=NULL){
-      int writing_flag=0;
-      for(int wf=0; wf<4; wf++){
-        if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
-          writing_flag=1;
-      }
-      if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
-        writing_flag=1;
-      
-      if(writing_flag==1)
-        fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
-      else continue;
-    }
-   //follow this atom neigh lists to write his distances from the rest of the atoms.
-    start_o = Start_Index(_o, far_nbrs);
-    end_o   = End_Index(_o, far_nbrs);
-    start_12 = Start_Index(_o, bond_nbrs);
-    end_12   = End_Index(_o, bond_nbrs);
-
-    //follow and write bonds distances.
-    for( pi1 = start_12; pi1 < end_12; ++pi1 ) {
-      nbr_p_12 = &( bond_nbrs->select.bond_list[pi1] );
-      _h = nbr_p_12->nbr;
-      atom_i2 = &(reaxc->system->my_atoms[_h]);
-      type_i2= atom_i2->type;
-      tag_i2 = atom_i2->orig_id;
-
-      if(fp!=NULL && tag_i2>0){
+    if(to_write_flag==1){
+      /* writing to the dists file distance only between O,C,N atoms known as legal candidate
+        for foursets atoms to the rest of all atoms from their own far-neigh-list and bond-list*/
+      if(fp!=NULL){
         int writing_flag=0;
         for(int wf=0; wf<4; wf++){
           if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
             writing_flag=1;
         }
-          if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
-            writing_flag=1;
-          if(writing_flag==1)
-            fprintf(fp,"%d %f ",tag_i2, nbr_p_12->d);
+        if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
+          writing_flag=1;
+        
+        if(writing_flag==1)
+          fprintf(fp,"\n# atom %d type %d ",tag_i1, type_i1+1);
+        else continue;
+      }
+    //follow this atom neigh lists to write his distances from the rest of the atoms.
+      start_o = Start_Index(_o, far_nbrs);
+      end_o   = End_Index(_o, far_nbrs);
+      start_12 = Start_Index(_o, bond_nbrs);
+      end_12   = End_Index(_o, bond_nbrs);
+
+      //follow and write bonds distances.
+      for( pi1 = start_12; pi1 < end_12; ++pi1 ) {
+        nbr_p_12 = &( bond_nbrs->select.bond_list[pi1] );
+        _h = nbr_p_12->nbr;
+        atom_i2 = &(reaxc->system->my_atoms[_h]);
+        type_i2= atom_i2->type;
+        tag_i2 = atom_i2->orig_id;
+
+        if(fp!=NULL && tag_i2>0){
+          int writing_flag=0;
+          for(int wf=0; wf<4; wf++){
+            if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )
+              writing_flag=1;
+          }
+            if( (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[0])%DETDA_SIZE==0 || (tag_i1-(num_of_epons*EPON_SIZE)-n_tags[1])%DETDA_SIZE==0 )
+              writing_flag=1;
+            if(writing_flag==1)
+              fprintf(fp,"%d %f ",tag_i2, nbr_p_12->d);
+        }
       }
     }
     
@@ -285,7 +295,7 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       type_i2= atom_i2->type;
       tag_i2 = atom_i2->orig_id;
 
-      if(fp!=NULL && tag_i2>0){
+      if(fp!=NULL && tag_i2>0 && to_write_flag==1){
         int writing_flag=0;
         for(int wf=0; wf<4; wf++){
           if( (tag_i1-o_c_pair_tags[wf][0])%EPON_SIZE==0 || (tag_i1-o_c_pair_tags[wf][1])%EPON_SIZE==0 )

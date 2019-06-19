@@ -44,8 +44,9 @@ class FixReaxCCheckFourset : public Fix {
   int num_fourset; //0 if the list is empty. else, number of foursets in the list
   FILE *fp; //for dists file that follow the distances between atoms.
   char *fp_suffix; //dists file suffix
-  int nevery_dists; //seperate the dists file into many files with this timesteps nevery
+  int nevery_file_dists; //seperate the dists file into many files with this timesteps nevery
   int set_mol_pattern();//function to set the pattern of o_c_pair_tags and n_tags
+  int nevery_dists_follow; //nevery for the dists documentation
 
   void allocate(); //alocate memory
   void destroy(); //free memory
