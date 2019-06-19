@@ -182,15 +182,9 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
   }
   int num_of_epons=int(atom->nlocal/58.5);
 
-  //TODO
-  //ofek
-  int _nevery=10;
-  int num_of_epons=int(atom->nlocal/58.5);
-
   //do it only each nevery timestep
   if(update->ntimestep%nevery_cond_check!=0)
     return;
-
 
   //document distances every this many steps only
   int doc_dists_flag=0;
