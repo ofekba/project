@@ -253,6 +253,7 @@ void PairReaxCOMP::compute(int eflag, int vflag)
 	if(flag_bb==1){
     //if the extra potential is working, calculate the energy & forces
     //apply the extra potential on the fourset
+    added_e=compute_BB();
     if(added_e==-1){
       char str[128];
       snprintf(str,128,"PAIR_REAXC.CPP: Failed operate the extra potential on the current fourset.");

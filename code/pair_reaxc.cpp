@@ -145,6 +145,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   MAX_NUM_TIMESTEPS=10000; //DEFAULT VALUE
   parameters_fp=NULL;
   calm_down=0;
+  energy_fp=NULL;
 
 
   //open the energy document file for writing.
