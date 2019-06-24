@@ -48,7 +48,7 @@ class FixReaxCCheckFourset : public Fix {
   int set_mol_pattern();//function to set the pattern of o_c_pair_tags and n_tags
   int nevery_dists_follow; //nevery for the dists documentation
   int nevery_file_dists; //seperate the dists file into many files with this timesteps nevery
-  int nevery_cond_check; // every this many steps look for legal fourset
+  int nevery_cond_check; // every this many steps look for legal foursets
 
   void allocate(); //alocate memory
   void destroy(); //free memory

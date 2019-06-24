@@ -648,7 +648,7 @@ void PairReaxCOMP::read_reax_forces(int /* vflag */)
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
       //turn on the calm down flag, to cool the system for 1000 timesteps.
-      calm_down=1000;
+      calm_down=CALM_DOWN_SIZE;
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }

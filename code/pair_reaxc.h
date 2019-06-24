@@ -67,6 +67,7 @@ class PairReaxC : public Pair {
   int set_fourset(int**, int); //get a founded fourset and apply the extra potentia on
   int set_extra_potential_parameters(); // set  F1, F2, R12 from the user input file
   int MAX_NUM_TIMESTEPS; //number of timesteps the potential works.
+  int CALM_DOWN_SIZE; //number of timesteps to cool down the system betwen operation of the extra potential on foursets.
 
  protected:
   char *fix_id;

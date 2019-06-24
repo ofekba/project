@@ -146,6 +146,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   parameters_fp=NULL;
   calm_down=0;
   energy_fp=NULL;
+  CALM_DOWN_SIZE=1000; //DEFAULT VALUE
 
 
   //open the energy document file for writing.
@@ -870,7 +871,7 @@ void PairReaxC::read_reax_forces(int /*vflag*/)
       if(energy_fp!=NULL)
         fprintf(energy_fp,"\nfinish");
       //turn on the calm down flag, to cool the system for 1000 timesteps.
-      calm_down=1000;
+      calm_down=CALM_DOWN_SIZE;
       printf("\n\n**** finish %d timesteps at timestep %d****\n\n", MAX_NUM_TIMESTEPS, update->ntimestep); 
     }
   }
@@ -1010,6 +1011,15 @@ int PairReaxC::set_extra_potential_parameters(){
         token = strtok(NULL, "\n");
     }
     else if(strcmp(token, "max_iterarions_of_potential")==0){
+      //gets the number of timesteps to let the system relex between operations of the extra potential on different foursets
+      token = strtok(NULL, "\n");
+      rtn_val=sscanf(token, "%d", &CALM_DOWN_SIZE);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
+    }
+    else if(strcmp(token, "num_steps_to_cool_down")==0){
       //gets the maximum iterarions number of the extra potential parameter
       token = strtok(NULL, "\n");
       rtn_val=sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
