@@ -501,7 +501,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
   while(token){
     //set time step to start and to end search for foursets to apply on the extra potential
     if(strcmp(token, "start_and_end_timeout_timesteps")==0){
-      token = strtok(NULL, " ");
+      token = strtok(NULL, "\n");
       rtn_val=sscanf(token, "%d", &temp);
       if(rtn_val<=0){
         fclose(parameters_fp);
