@@ -1013,7 +1013,7 @@ int PairReaxC::set_extra_potential_parameters(){
     else if(strcmp(token, "max_iterarions_of_potential")==0){
       //gets the number of timesteps to let the system relex between operations of the extra potential on different foursets
       token = strtok(NULL, "\n");
-      rtn_val=sscanf(token, "%d", &CALM_DOWN_SIZE);
+      rtn_val=sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
       if(rtn_val<=0){
         fclose(parameters_fp);
         return -1;
@@ -1022,7 +1022,7 @@ int PairReaxC::set_extra_potential_parameters(){
     else if(strcmp(token, "num_steps_to_cool_down")==0){
       //gets the maximum iterarions number of the extra potential parameter
       token = strtok(NULL, "\n");
-      rtn_val=sscanf(token, "%d", &MAX_NUM_TIMESTEPS);
+      rtn_val=sscanf(token, "%d", &CALM_DOWN_SIZE);
       if(rtn_val<=0){
         fclose(parameters_fp);
         return -1;
