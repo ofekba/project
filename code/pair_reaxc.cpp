@@ -1014,12 +1014,11 @@ int PairReaxC::set_extra_potential_parameters(){
     //set time step to start and to end search for foursets to apply on the extra potential
     else if(strcmp(token, "start_and_end_timeout_timesteps")==0){
       token = strtok(NULL, " ");
-      rtn_val=sscanf(token, "%d", &temp);
+      rtn_val=sscanf(token, "%d", &timeout_timesteps_at_start_and_end);
       if(rtn_val<=0){
         fclose(parameters_fp);
         return -1;
       }
-      timeout_timesteps_at_start_and_end=temp;
       finish_flag++;
     }
     else if(strcmp(token, "max_iterarions_of_potential")==0){
