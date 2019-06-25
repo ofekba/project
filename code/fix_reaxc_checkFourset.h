@@ -49,6 +49,7 @@ class FixReaxCCheckFourset : public Fix {
   int nevery_dists_follow; //nevery for the dists documentation
   int nevery_file_dists; //seperate the dists file into many files with this timesteps nevery
   int nevery_cond_check; // every this many steps look for legal foursets
+  int timeout_timesteps_at_start_and_end; //parameter for first and last timesteps number to run only reaxff to stable the system
 
   void allocate(); //alocate memory
   void destroy(); //free memory

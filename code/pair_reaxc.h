@@ -110,7 +110,7 @@ class PairReaxC : public Pair {
   FILE *energy_fp; //file that document the added energy to the system
   FILE *parameters_fp; //file of the parameters of the extra potential
   int calm_down; //create 1000 timesteps break after finish apply the extra potential
-
+  int timeout_timesteps_at_start_and_end; //number of first and last timesteps to run only reaxff to stable the system
 };
 
 }

@@ -147,6 +147,7 @@ PairReaxC::PairReaxC(LAMMPS *lmp) : Pair(lmp)
   calm_down=0;
   energy_fp=NULL;
   CALM_DOWN_SIZE=1000; //DEFAULT VALUE
+  timeout_timesteps_at_start_and_end=10000; //default value
 
 
   //open the energy document file for writing.
@@ -1010,6 +1011,17 @@ int PairReaxC::set_extra_potential_parameters(){
     else if(strcmp(token, "n tags")==0 || strcmp(token, "N tags")==0){
         token = strtok(NULL, "\n");
     }
+    //set time step to start and to end search for foursets to apply on the extra potential
+    else if(strcmp(token, "start_and_end_timeout_timesteps")==0){
+      token = strtok(NULL, " ");
+      rtn_val=sscanf(token, "%d", &temp);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
+      timeout_timesteps_at_start_and_end=temp;
+      finish_flag++;
+    }
     else if(strcmp(token, "max_iterarions_of_potential")==0){
       //gets the number of timesteps to let the system relex between operations of the extra potential on different foursets
       token = strtok(NULL, "\n");
@@ -1018,6 +1030,7 @@ int PairReaxC::set_extra_potential_parameters(){
         fclose(parameters_fp);
         return -1;
       }
+      finish_flag++;
     }
     else if(strcmp(token, "num_steps_to_cool_down")==0){
       //gets the maximum iterarions number of the extra potential parameter
@@ -1027,6 +1040,7 @@ int PairReaxC::set_extra_potential_parameters(){
         fclose(parameters_fp);
         return -1;
       }
+      finish_flag++;
     }
     else if(strcmp(token, "TYPE1 TYPE2 F1 F2 R12")==0){
       //gets the F1, F2, R12 extra potential parameter
@@ -1064,14 +1078,14 @@ int PairReaxC::set_extra_potential_parameters(){
           //printf("\n~~~~type1 %d type2 %d _f1=%f _f2=%f _r12=%f MAX_NUM_TIMESTEPS=%d\n",type1, type2, _f1,_f2, _r12, MAX_NUM_TIMESTEPS);
         }
       }
-      finish_flag=1;
+      finish_flag++;
     }
     else{
       //format ERROR, wrong usage
       fclose(parameters_fp);
       return -1;
     }
-    if(finish_flag==1){
+    if(finish_flag==4){
       //success
       fclose(parameters_fp);
       return 0;
@@ -1079,7 +1093,7 @@ int PairReaxC::set_extra_potential_parameters(){
     token = strtok(NULL, "\n");
   }
 
-  if(finish_flag==0){
+  if(finish_flag<4){
     //missing parameters ERROR
     fclose(parameters_fp);
     return -1;
@@ -1103,10 +1117,10 @@ int PairReaxC::set_fourset(int **foursets, int num_foursets){
   if(calm_down>0){
     return 0;
   }
-  if(update->ntimestep<10000){
+  if(update->ntimestep<timeout_timesteps_at_start_and_end){
     return 0;
   }
-  if(update->laststep-update->ntimestep<MAX_NUM_TIMESTEPS){
+  if( (update->laststep - update->ntimestep) < (MAX_NUM_TIMESTEPS+timeout_timesteps_at_start_and_end) ){
     return 0;
   }
   int set_params_flag=set_extra_potential_parameters();

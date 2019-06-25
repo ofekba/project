@@ -106,6 +106,7 @@ FixReaxCCheckFourset::FixReaxCCheckFourset(LAMMPS *lmp, int narg, char **arg) :
   o_c_pair_tags = NULL;
   n_tags=NULL;
   MAX_NUM_FOURSETS=atom->nlocal;
+  timeout_timesteps_at_start_and_end=10000; //default value
 
   allocate(); //allocate all the memory for each struct.
   strcpy(fp_suffix,arg[4]); //define the suffix for each dists file that follow dists between reactive atoms
@@ -322,6 +323,8 @@ void FixReaxCCheckFourset::FindNbr(struct _reax_list * /*lists*/)
       if(type_i1 != TYPE_O || type_i2 != TYPE_H) continue;
       //foursets list is full
       if(num_fourset>=MAX_NUM_FOURSETS) continue;
+      //make sure to have free first&last timesteps from running the extra potential on fourset to let the system stable
+      if(update->ntimestep<timeout_timesteps_at_start_and_end || (update->laststep - update->ntimestep) < timeout_timesteps_at_start_and_end) continue;
 
       //if O-H distance meets the paper condition, look for N atom
       if (1.3 <= nbr_p_oh->d && nbr_p_oh->d <= 8.0 ){
@@ -496,6 +499,17 @@ int FixReaxCCheckFourset::set_mol_pattern(){
 
   //set the o-c pair tags parameters
   while(token){
+    //set time step to start and to end search for foursets to apply on the extra potential
+    if(strcmp(token, "start_and_end_timeout_timesteps")==0){
+      token = strtok(NULL, " ");
+      rtn_val=sscanf(token, "%d", &temp);
+      if(rtn_val<=0){
+        fclose(parameters_fp);
+        return -1;
+      }
+      timeout_timesteps_at_start_and_end=temp;
+      finish_flag++;
+    }
     if(strcmp(token, "O-C pair tags")==0 || strcmp(token, "o-c pair tags")==0){
       for(int i=0; i<4; i++){
         for(int j=0; j<2; j++){
@@ -531,7 +545,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     }
 
     //only if both of them defiened succefully
-    if(finish_flag==2){
+    if(finish_flag==3){
       for(int i=0; i<4; i++){
         printf("\nO-C pair %d %d\n",o_c_pair_tags[i][0],o_c_pair_tags[i][1]);
       }
@@ -542,7 +556,7 @@ int FixReaxCCheckFourset::set_mol_pattern(){
     token = strtok(NULL, "\n");
   }
   // if not both of them defiened succefully, ERROR
-  if(finish_flag<2){
+  if(finish_flag<3){
     fclose(parameters_fp);
     printf("\n not finish\n");
     return -1;
