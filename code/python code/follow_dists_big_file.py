@@ -24,27 +24,40 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	between any 2 atoms at any timestep to create the axis_y array, each cell is an axis y.
 	each 4 axis_y are distances between 4 pairs of this fourset.
 	at the end create a graph of the distances between 4 pairs as a function of time"""	
-def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list):
+def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_timesteps, nevery_file_dists):
 	atom_tag=0
 	atom_type=0
 	neigh_tag=0
 	neigh_dist=0
 	axis_x=[]
 	axis_y=[[],[],[],[]]
-	timestep_counter=0;
-	num_of_foursets=0
-	for line in text_list:
+	timestep_counter=0
+	i_on_textlist=0
+	end_of_files_flag=1
+	curr_file=0
+	while end_of_files_flag==1:
+		i_on_textlist+=1
+		if i_on_textlist==len(text_list):
+			curr_file+=nevery_file_dists
+			file_to_open="dists.reax."+str(curr_file)
+			print(file_to_open)
+			fp = open(file_to_open,"r") 
+			text_list = fp.read().split("\n")
+			i_on_textlist=0
+		line=text_list[i_on_textlist]
 		ln=line.split(" ")
 		i=0 #iterator on the line
 		if ln[i]=="#": i+=1
 		if(i>=len(ln)): continue
 		elif ln[i]=="Timestep":
-			axis_x.append(int(ln[i+1]))
-			timestep_counter+=1
-			axis_y[0].append(10)
-			axis_y[1].append(10)
-			axis_y[2].append(10)
-			axis_y[3].append(10)
+			if(int(ln[i+1])==total_timesteps): end_of_files_flag=0
+			else:
+				axis_x.append(int(ln[i+1]))
+				timestep_counter+=1
+				axis_y[0].append(10)
+				axis_y[1].append(10)
+				axis_y[2].append(10)
+				axis_y[3].append(10)
 			continue
 		elif ln[i]=="atom":
 			atom_tag=int(ln[i+1])
@@ -78,7 +91,8 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list):
 					neigh_dist=float(ln[j])
 					j+=1
 					if(neigh_tag==h_tag): axis_y[1][timestep_counter-1]=(neigh_dist)
-	
+	print(axis_y[0])
+
 	plt.plot(axis_x,axis_y[0], label="C("+str(c_tag)+")-O("+str(o_tag)+")")
 	plt.plot(axis_x,axis_y[1], label="H("+str(h_tag)+")-O("+str(o_tag)+")")
 	plt.plot(axis_x,axis_y[2], label="H("+str(h_tag)+")-N("+str(n_tag)+")")
@@ -96,12 +110,12 @@ def dist_graph():
 	text=fp.read() 
 	
 	#copy parts from the distance files "dists" to new short file
-	fff = open("shorter_dists.txt", "a")
-	fff_start=0
-	fff_end=0
-	fff_start_point=90000
-	fff_end_point=110000
-	fff.write("Now the file has more content!\n")
+	#fff = open("shorter_dists.txt", "a")
+	#fff_start=0
+	#fff_end=0
+	#fff_start_point=90000
+	#fff_end_point=110000
+	#fff.write("Now the file has more content!\n")
 
 	text_list = text.split("\n")
 	timeStep=0
@@ -110,6 +124,11 @@ def dist_graph():
 	atom_type=0
 	neigh_tag=0
 	neigh_dist=0
+
+# totalTimesteps 800000 
+# totalAtomNum 936 
+# nevery_dists_follow 1000
+# nevery_file_dists 100000
 
 	ln=text_list[0].split(" ")
 	if ln[1] == "totalTimesteps":
@@ -120,25 +139,44 @@ def dist_graph():
 		total_atomNum=int(ln[2])
 		print("total_atomNum ", total_atomNum)
 	
-	
+	nevery_dists_follow=10
 	ln=text_list[2].split(" ")
-	if ln[1] == "fix_nevery":
-		neverty_fix_check=int(ln[2])
-		print("neverty_fix_check ", neverty_fix_check)
-	neverty_fix_check=10
+	if ln[1] == "nevery_dists_follow":
+		nevery_dists_follow=int(ln[2])
+		print("nevery_dists_follow ", nevery_dists_follow)
 
-	size=int(total_timesteps/neverty_fix_check) + 1
+	nevery_file_dists=100000
+	ln=text_list[2].split(" ")
+	if ln[1] == "nevery_file_dists":
+		nevery_file_dists=int(ln[2])
+		print("nevery_file_dists ", nevery_file_dists)
+	
+
+	size=int(total_timesteps/nevery_dists_follow) + 1
 	fourset=[]
 	fourset_timestep=[]
 	num_of_foursets=0
-	for line in text_list:
+	i_on_textlist=0
+	end_of_files_flag=1
+	curr_file=0
+	while end_of_files_flag==1:
+		i_on_textlist+=1
+		if i_on_textlist==len(text_list):
+			curr_file+=nevery_file_dists
+			file_to_open="dists.reax."+str(curr_file)
+			print(file_to_open)
+			fp = open(file_to_open,"r") 
+			text_list = fp.read().split("\n")
+			i_on_textlist=0
+		line=text_list[i_on_textlist]
 		ln=line.split(" ")
 		i=0 #iterator on the line
 		if ln[i]=="#": i+=1
 		if(i>=len(ln)): continue
 		if ln[i]=="Timestep":
-			if int(ln[i+1])<fff_start_point: fff_start+=1
-			if int(ln[i+1])<fff_end_point: fff_end+=1
+			#if int(ln[i+1])<fff_start_point: fff_start+=1
+			#if int(ln[i+1])<fff_end_point: fff_end+=1
+			if int(ln[i+1])==total_timesteps: end_of_files_flag=0
 		elif ln[i]=="fourset":
 			i+=7
 			fs_ts=int(ln[i]) #current fourset timestep
@@ -153,11 +191,15 @@ def dist_graph():
 				num_of_foursets+=1
 	
 	axis_y=[]
-	for ln in text_list[fff_start:fff_end]:
-		fff.write(ln)
+	print(num_of_foursets)
+	#for ln in text_list[fff_start:fff_end]:
+		#fff.write(ln)
 	#create graph for each fourset
-	for i in range(len(fourset)):
-		create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list)
+	# for i in range(len(fourset)):
+	for i in range(10):
+		fp = open("dists.reax","r") 
+		text_list = fp.read().split("\n")
+		create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list, total_timesteps, nevery_file_dists)
 
 
 """create Graph of the added energy by the extra potential as a function of time"""
