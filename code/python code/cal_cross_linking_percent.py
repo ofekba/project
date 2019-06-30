@@ -3,12 +3,23 @@ import math
 import numpy as np
 from matplotlib import pyplot as plt
 
+
+"""create graph using mathplot.
+	input- axis x, axis y, label for each axis and title for the graph"""
+def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
+	plt.plot(axis_x,axis_y)
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
+	plt.title(title)
+	plt.show()
+
+
 """this code calculate the cross linking percent of a simulation at a timestep
 	that the user types. the calculation:
 	cross linking % = number of created N-C bonds / 4* num of DETDA molecoles.""" 
-def cal_cross_linking_percent():
+def cal_cross_linking_percent(time_step_to_cal):
 	#gets from the user the timestep he wants to check the cross linking %
-	time_step_to_cal = int (input("Enter timeStep to calculate cross linking % on: ") )
+	#time_step_to_cal = int (input("Enter timeStep to calculate cross linking % on: ") )
 	count_n_c_bond=0 #the number of N-C bonds created
 	#open the bonds LAMMPS output file that contain all the bonds of each atom any 500 timesteps
 	fp = open("bonds.reax","r") 
@@ -69,8 +80,18 @@ def cal_cross_linking_percent():
 	cross_linking_percent=(count_n_c_bond-start_n_c_bond)/(4*num_of_detda)
 	print("num of DETDA molecules: ",num_of_detda)
 	print("\nRESULT-cross linking percent: ",cross_linking_percent)
+	return cross_linking_percent
 	
 
-cal_cross_linking_percent()
+axis_x=[]
+axis_y=[]
+for i in range(11):
+    x=i*50000
+    axis_x.append(x)
+    y=cal_cross_linking_percent(x)
+    axis_y.append(y)
+make_graph(axis_x, axis_y, "timeStep", "cross linking %", "Graph of cross linking % as a function of time")
+
+
 	
 	
