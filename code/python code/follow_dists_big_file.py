@@ -24,7 +24,7 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	between any 2 atoms at any timestep to create the axis_y array, each cell is an axis y.
 	each 4 axis_y are distances between 4 pairs of this fourset.
 	at the end create a graph of the distances between 4 pairs as a function of time"""	
-def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_timesteps, nevery_file_dists):
+def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_timesteps, nevery_file_dists, fourset_index, save_flag):
 	atom_tag=0
 	atom_type=0
 	neigh_tag=0
@@ -40,7 +40,6 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 		if i_on_textlist==len(text_list):
 			curr_file+=nevery_file_dists
 			file_to_open="dists.reax."+str(curr_file)
-			print(file_to_open)
 			fp = open(file_to_open,"r") 
 			text_list = fp.read().split("\n")
 			i_on_textlist=0
@@ -54,10 +53,16 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 			else:
 				axis_x.append(int(ln[i+1]))
 				timestep_counter+=1
-				axis_y[0].append(10)
-				axis_y[1].append(10)
-				axis_y[2].append(10)
-				axis_y[3].append(10)
+				if len(axis_y[0])>0:
+				    axis_y[0].append(axis_y[0][-1])
+				    axis_y[1].append(axis_y[1][-1])
+				    axis_y[2].append(axis_y[2][-1])
+				    axis_y[3].append(axis_y[3][-1])
+				else:
+				    axis_y[0].append(10)
+				    axis_y[1].append(10)
+				    axis_y[2].append(10)
+				    axis_y[3].append(10)
 			continue
 		elif ln[i]=="atom":
 			atom_tag=int(ln[i+1])
@@ -91,7 +96,6 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 					neigh_dist=float(ln[j])
 					j+=1
 					if(neigh_tag==h_tag): axis_y[1][timestep_counter-1]=(neigh_dist)
-	print(axis_y[0])
 
 	plt.plot(axis_x,axis_y[0], label="C("+str(c_tag)+")-O("+str(o_tag)+")")
 	plt.plot(axis_x,axis_y[1], label="H("+str(h_tag)+")-O("+str(o_tag)+")")
@@ -101,7 +105,14 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 	plt.xlabel("timeStep")
 	plt.ylabel("distance")
 	plt.title("Distance Between Atoms As A Function Of Time, Extra potential started at "+str(fourset_ts))
-	plt.show()
+	if save_flag==1:
+		pic_name="fourset_"+str(fourset_index)+".png"
+		fig = plt.gcf()
+		fig.set_size_inches((15, 8), forward=False)
+		fig.savefig(pic_name)
+		plt.clf()
+	else:
+		plt.show()
 	return axis_y
 	
 """ creates distance graph for each fourset that we apply the extra potential on duting the simulation run """
@@ -164,7 +175,6 @@ def dist_graph():
 		if i_on_textlist==len(text_list):
 			curr_file+=nevery_file_dists
 			file_to_open="dists.reax."+str(curr_file)
-			print(file_to_open)
 			fp = open(file_to_open,"r") 
 			text_list = fp.read().split("\n")
 			i_on_textlist=0
@@ -192,14 +202,12 @@ def dist_graph():
 	
 	axis_y=[]
 	print(num_of_foursets)
-	#for ln in text_list[fff_start:fff_end]:
-		#fff.write(ln)
+	#show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists)
 	#create graph for each fourset
-	# for i in range(len(fourset)):
-	for i in range(10):
+	for i in range(len(fourset)):
 		fp = open("dists.reax","r") 
 		text_list = fp.read().split("\n")
-		create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list, total_timesteps, nevery_file_dists)
+		create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list, total_timesteps, nevery_file_dists,i+1,1)
 
 
 """create Graph of the added energy by the extra potential as a function of time"""
@@ -256,10 +264,21 @@ def log_graphs():
 	make_graph(timeStep_arr, potE_arr, "TimeStep", "Potential Energy", "Potential Energy As A Function Of Time")
 	make_graph(timeStep_arr, press_arr, "TimeStep", "Pressure", "Pressure As A Function Of Time")
 	make_graph(timeStep_arr, totalE_arr, "TimeStep", "Total Energy", "Total Energy As A Function Of Time")
+
+
+def show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists):
+    arr=[3,5,14,16,17,18,22,38,40,49,68,77,84,94,99,106,108,110,137,140,144,145,153,161,166,174,176]
+    for item in arr:
+        fp = open("dists.reax","r") 
+        text_list = fp.read().split("\n")
+        i=item-1
+        create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list, total_timesteps,nevery_file_dists,i+1,0)
+
+
 	
 		
 #operate functions as you want to create the graphs you want.	
-dist_graph()
-#extraE_graph()
-#log_graphs()
+#dist_graph()
+extraE_graph()
+log_graphs()
 

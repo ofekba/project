@@ -33,6 +33,7 @@ def species_reader():
 	fp = open("species.out","r") 
 	text=fp.read() 
 	text_list = text.split("\n")
+	species_at_end=[]
 	while i<len(text_list)-1:
 		ln = text_list[i].split(" ")
 		ln=[x for x in ln if x]
@@ -57,19 +58,24 @@ def species_reader():
 				trucker[x].append(int(ln[3+j]))
 		for j in range(len(trucker)):
 			if len(trucker[j])<len(time_Step): trucker[j].append(0)
+			else:
+				if i==len(text_list)-2: species_at_end.append(j)
+                
 		i+=1
 
-		
+	print(species_at_end)
 	#for i in range(len(trucker)):
 		#make_graph(time_Step, trucker[i], xlabel="time_Step", ylabel=list(species_dict.keys())[i], title="Graph")
-	for i in range(4):
+	print(species_dict)
+	for i in species_at_end:
 		spec_label=list(species_dict.keys())[i]
 		plt.plot(time_Step,trucker[i], label=spec_label)
 		x = species_dict.get(spec_label)
 	plt.xlabel("timeStep")
 	plt.ylabel("Number of molecules of each species")
 	plt.legend(loc='upper right')
-	plt.title("Number of molecules of each species as a function of time")	
+	plt.title("Number of molecules of each species as a function of time")
+	plt.show()
 			
 species_dict =	{
 	  "C11H18N2": 0,
