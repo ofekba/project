@@ -11,7 +11,91 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-"""create graph using mathplot.
+ts_list=[]
+find_reaction_ts(1000, ts_list)
+print(ts_list)
+
+
+"""this code find the timesteps when a reaction happend succefully""" 
+def find_reaction_ts(time_step_to_cal, ts_list):
+	#gets from the user the timestep he wants to check the cross linking %
+	#time_step_to_cal = int (input("Enter timeStep to calculate cross linking % on: ") )
+	count_n_c_bonds=0 #the number of N-C bonds created
+	#open the bonds LAMMPS output file that contain all the bonds of each atom any 500 timesteps
+	fp = open("bonds.reax","r") 
+	text=fp.read() 
+	text_list = text.split("\n")
+	text_list=[x for x in text_list if x]
+	ln=text_list[2].split(" ")
+	ln=[x for x in ln if x]
+	num_of_atoms=int(ln[4]) #num of atoms at the simulation
+	tag_to_type = [0] * (num_of_atoms+1) #get a type of atom by his tag
+	for i in range(num_of_atoms):
+		ln=text_list[7+i].split(" ")
+		ln=[x for x in ln if x]
+		tag_to_type[int(ln[0])]=int(ln[1])
+
+	start_n_c_bonds=0 #number of N-C bonds at the start of the run
+	num_of_detda=num_of_atoms/117
+
+	#check timestep 0 at the bonds file the number of N-C bonds at the start of the run
+	for i in range(num_of_atoms):
+		ln=text_list[i+7].split(" ")
+		ln=[x for x in ln if x]
+		if(len(ln)<7): break
+		_id=int(ln[0])
+		_type=int(ln[1])
+		if _type!=4: continue
+		_num_neigh=int(ln[2])
+		for n in range(_num_neigh):
+			neigh_id=int(ln[3+n])
+			if(tag_to_type[neigh_id]==1): start_n_c_bonds+=1
+				
+	old_count_n_c_bonds=start_n_c_bonds
+		
+	#find the bonds table at the chosen timestep	
+	for i in range(len(text_list)):
+		ln=text_list[i].split(" ")
+		ln=[x for x in ln if x]
+		if len(ln)>2:
+			if ln[1]=="Timestep" and (int(ln[2])%time_step_to_cal)==0:
+				time_step=int(ln[2])
+				i+=7
+				count_n_c_bonds=0
+				#check the number of N-C bonds at the chosen timestep
+				for j in range(num_of_atoms):
+					ln=text_list[i+j].split(" ")
+					ln=[x for x in ln if x]
+					if(len(ln)<7): break
+					_id=int(ln[0])
+					_type=int(ln[1])
+					if _type!=4: continue
+					_num_neigh=int(ln[2])
+					for n in range(_num_neigh):
+						neigh_id=int(ln[3+n])
+						if(tag_to_type[neigh_id]==1): count_n_c_bonds+=1
+				if(count_n_c_bonds>old_count_n_c_bonds):
+					ts_list.append(time_step)
+				if(count_n_c_bonds<old_count_n_c_bonds):
+					del ts_list[-1]
+				old_count_n_c_bonds=count_n_c_bonds
+				
+	
+
+
+
+"""create Energy graph using mathplot. mark the timesteps when reaction happend.
+	input- axis x, axis y, label for each axis and title for the graph"""
+def make_E_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
+	plt.plot(axis_x,axis_y)
+	for ts in ts_list: plt.axvline(x=ts, color='#d62728')
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
+	plt.title(title)
+	plt.show()
+	
+	
+"""create Energy graph using mathplot
 	input- axis x, axis y, label for each axis and title for the graph"""
 def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	plt.plot(axis_x,axis_y)
@@ -229,7 +313,7 @@ def extraE_graph():
 	#print(axis_x)
 
 	x= [i for i in range(len(y))]
-	make_graph(x,y, "TimeStep", "added energy", "Additional Energy As A Function Of Time")
+	make_E_graph(x,y, "TimeStep", "added energy", "Additional Energy As A Function Of Time")
 
 
 """create Graphs of the potential energy, total energy, tempeture and pressure by the extra potential as a function of time"""		
@@ -261,9 +345,9 @@ def log_graphs():
 		press_arr.append(float(ln[4]))
 
 	make_graph(timeStep_arr, temp_arr, "TimeStep", "Temprature", "Temprature As A Function Of Time")
-	make_graph(timeStep_arr, potE_arr, "TimeStep", "Potential Energy", "Potential Energy As A Function Of Time")
+	make_E_graph(timeStep_arr, potE_arr, "TimeStep", "Potential Energy", "Potential Energy As A Function Of Time")
 	make_graph(timeStep_arr, press_arr, "TimeStep", "Pressure", "Pressure As A Function Of Time")
-	make_graph(timeStep_arr, totalE_arr, "TimeStep", "Total Energy", "Total Energy As A Function Of Time")
+	make_E_graph(timeStep_arr, totalE_arr, "TimeStep", "Total Energy", "Total Energy As A Function Of Time")
 
 
 def show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists):
@@ -281,4 +365,3 @@ def show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists
 #dist_graph()
 extraE_graph()
 log_graphs()
-
