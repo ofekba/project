@@ -43,7 +43,6 @@ def species_reader():
 	time_Step=[]
 	No_Moles=[]
 	No_Specs=[]
-	species=[]
 	trucker=[[],[],[],[]]
 	fp = open("species.out","r") 
 	text=fp.read() 
@@ -104,7 +103,7 @@ def species_reader():
 			h_num.append(freg_h)
 			o_num.append(freg_o)
 			n_num.append(freg_n)
-			continue;
+			continue
 		if(freg=="H"):
 			print("2")		
 		if freg[f]=="h" or freg[f]=="H":
@@ -113,14 +112,14 @@ def species_reader():
 			h_num.append(freg_h)
 			o_num.append(freg_o)
 			n_num.append(freg_n)
-			continue;
+			continue
 		h_num.append(freg_h)
 		if freg[f]=="o" or freg[f]=="O":
 			f,freg_o=count_shows(freg, f+1)
 		o_num.append(freg_o)
 		if(f==len(freg)):
 			n_num.append(freg_n)
-			continue;
+			continue
 		if freg[f]=="n" or freg[f]=="N":
 			f,freg_n=count_shows(freg, f+1)
 		n_num.append(freg_n)
@@ -129,7 +128,7 @@ def species_reader():
 	#translate each species into DEDTA and EPON 
 	new_label=["D","E"]
 	for _ff in range(len(spec_list)):
-		if(_ff<2): continue;
+		if(_ff<2): continue
 		num_d=math.floor((n_num[_ff]/n_num[0]))
 		num_e=math.floor((o_num[_ff]/o_num[1]))
 		bf=""

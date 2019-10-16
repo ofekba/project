@@ -11,10 +11,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-ts_list=[]
-find_reaction_ts(1000, ts_list)
-print(ts_list)
-
 
 """this code find the timesteps when a reaction happend succefully""" 
 def find_reaction_ts(time_step_to_cal, ts_list):
@@ -36,7 +32,6 @@ def find_reaction_ts(time_step_to_cal, ts_list):
 		tag_to_type[int(ln[0])]=int(ln[1])
 
 	start_n_c_bonds=0 #number of N-C bonds at the start of the run
-	num_of_detda=num_of_atoms/117
 
 	#check timestep 0 at the bonds file the number of N-C bonds at the start of the run
 	for i in range(num_of_atoms):
@@ -77,11 +72,13 @@ def find_reaction_ts(time_step_to_cal, ts_list):
 				if(count_n_c_bonds>old_count_n_c_bonds):
 					ts_list.append(time_step)
 				if(count_n_c_bonds<old_count_n_c_bonds):
-					del ts_list[-1]
+					if len(ts_list)>0: del ts_list[-1]
 				old_count_n_c_bonds=count_n_c_bonds
 				
 	
-
+ts_list=[]
+find_reaction_ts(1000, ts_list)
+print(ts_list)
 
 
 """create Energy graph using mathplot. mark the timesteps when reaction happend.
@@ -110,7 +107,6 @@ def make_graph(axis_x, axis_y, xlabel="x", ylabel="y", title="Graph"):
 	at the end create a graph of the distances between 4 pairs as a function of time"""	
 def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_timesteps, nevery_file_dists, fourset_index, save_flag):
 	atom_tag=0
-	atom_type=0
 	neigh_tag=0
 	neigh_dist=0
 	axis_x=[]
@@ -150,7 +146,6 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 			continue
 		elif ln[i]=="atom":
 			atom_tag=int(ln[i+1])
-			atom_type=int(ln[i+3])
 			i+=4
 			j=i #iterator for atoms line
 			if(atom_tag==c_tag):
@@ -203,27 +198,7 @@ def create_dist_nparray(o_tag,h_tag,n_tag,c_tag, fourset_ts, text_list, total_ti
 def dist_graph():
 	fp = open("dists.reax","r") 
 	text=fp.read() 
-	
-	#copy parts from the distance files "dists" to new short file
-	#fff = open("shorter_dists.txt", "a")
-	#fff_start=0
-	#fff_end=0
-	#fff_start_point=90000
-	#fff_end_point=110000
-	#fff.write("Now the file has more content!\n")
-
 	text_list = text.split("\n")
-	timeStep=0
-	timeStep_index=0
-	atom_tag=0
-	atom_type=0
-	neigh_tag=0
-	neigh_dist=0
-
-# totalTimesteps 800000 
-# totalAtomNum 936 
-# nevery_dists_follow 1000
-# nevery_file_dists 100000
 
 	ln=text_list[0].split(" ")
 	if ln[1] == "totalTimesteps":
@@ -245,9 +220,7 @@ def dist_graph():
 	if ln[1] == "nevery_file_dists":
 		nevery_file_dists=int(ln[2])
 		print("nevery_file_dists ", nevery_file_dists)
-	
 
-	size=int(total_timesteps/nevery_dists_follow) + 1
 	fourset=[]
 	fourset_timestep=[]
 	num_of_foursets=0
@@ -283,8 +256,7 @@ def dist_graph():
 				fourset.append([int(x) for x in ln[i+1:i+5]])
 				fourset_timestep.append(fs_ts)
 				num_of_foursets+=1
-	
-	axis_y=[]
+
 	print(num_of_foursets)
 	#show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists)
 	#create graph for each fourset
@@ -301,16 +273,11 @@ def extraE_graph():
 	text_list = text.split("\n")
 
 	text_list=text_list[1:]
-	#print(text_list)
 	y=[]
 	for e in text_list:
 		if e == "finish": y.append(0.0)
 		elif e == "start": continue
 		else: y.append(float(e))
-
-	#x=list(range(len(y)))
-	#axis_x=list(range(1, len(y)))
-	#print(axis_x)
 
 	x= [i for i in range(len(y))]
 	make_E_graph(x,y, "TimeStep", "added energy", "Additional Energy As A Function Of Time")
@@ -320,7 +287,6 @@ def extraE_graph():
 def log_graphs():
 	fp = open("log.lammps","r") 
 	text=fp.read() 
-
 	text_list = text.split("\n")
 
 	i=0
@@ -359,7 +325,6 @@ def show_only_success(fourset,fourset_timestep,total_timesteps,nevery_file_dists
         create_dist_nparray(fourset[i][0],fourset[i][1],fourset[i][2],fourset[i][3], fourset_timestep[i], text_list, total_timesteps,nevery_file_dists,i+1,0)
 
 
-	
 		
 #operate functions as you want to create the graphs you want.	
 #dist_graph()
