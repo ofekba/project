@@ -24,7 +24,7 @@ while running the code, you will be asked to type the file name, the box borders
 
 #### how to run it?
 1. Download lammps source code from [here](https://github.com/lammps/lammps.git)
-2. Copy fix_reaxc_ofek.h, fix_reaxc_ofek.cpp to lammps/src directory.
+2. Copy fix_reaxc_checkFourset.h, fix_reaxc_checkFourset.cpp to lammps/src directory.
 3. Copy the files pair_reaxc.h, pair_reaxc.cpp to lammps/src/USER-REAXC directory
 3. Open terminal in the lammps/src directory
 5. Use those commands to compile the lammps code:
